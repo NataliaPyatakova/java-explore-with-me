@@ -27,6 +27,7 @@ public class StatsController {
     @PostMapping("/hit")
     @ResponseStatus(HttpStatus.CREATED)
     public void save(@RequestBody @Valid EndpointHit endpointHit) {
+        log.info("StatsController save endpointHit {}", endpointHit);
         statsService.save(endpointHit);
     }
 
@@ -36,6 +37,7 @@ public class StatsController {
                                    @RequestParam(value = "uris", required = false) List<String> uris,
                                    @RequestParam(value = "unique", defaultValue = "false") Boolean unique) {
         //из документации не ясна логика если НЕТ этого параметра, поэтому пока ставим false дефолтом
+        log.info("StatsController getStats start {} end {} uris {} unique {}", start, end, uris, unique);
         return statsService.getStats(start, end, uris, unique);
     }
 }
