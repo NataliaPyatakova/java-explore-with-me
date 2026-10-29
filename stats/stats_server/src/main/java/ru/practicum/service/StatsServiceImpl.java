@@ -65,6 +65,9 @@ public class StatsServiceImpl implements StatsService {
                 );
             }
         }
-        return setViewStats.stream().sorted(Comparator.comparing(ViewStats::getHits).reversed()).collect(Collectors.toCollection(LinkedHashSet::new));
-    }//В теле ответа должна соблюдаться сортировка по убыванию количества просмотров
+        return setViewStats
+                .stream()
+                .sorted(Comparator.comparing(ViewStats::getHits).reversed())  //по убыванию
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
 }
