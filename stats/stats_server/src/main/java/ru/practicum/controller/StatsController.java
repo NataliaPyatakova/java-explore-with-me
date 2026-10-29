@@ -26,7 +26,7 @@ public class StatsController {
 
     @PostMapping("/hit")
     @ResponseStatus(HttpStatus.CREATED)
-    public void save(@RequestBody @Valid EndpointHit endpointHit) {
+    public void hit(@RequestBody @Valid EndpointHit endpointHit) {
         log.info("StatsController save endpointHit {}", endpointHit);
         statsService.save(endpointHit);
     }
