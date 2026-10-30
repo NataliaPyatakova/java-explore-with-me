@@ -6,13 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.EndpointHit;
 import ru.practicum.dto.ViewStats;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.mapper.HitMapper;
-import ru.practicum.model.Hit;
 import ru.practicum.repository.HitRepository;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -30,44 +29,25 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    public Set<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+    public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         log.info("getStats start {} end {} uris {} unique {}", start, end, uris, unique);
-        List<Hit> hits;
-        if (uris != null && !uris.isEmpty()) {
-            hits = hitRepository.findAllByTimestampBetweenAndUriIn(start, end, uris);
-        } else {
-            hits = hitRepository.findAllByTimestampBetween(start, end);
+        if (start.isAfter(end)) {
+            throw new BadRequestException("Дата начала позже даты конца");
         }
-        Set<ViewStats> setViewStats = new HashSet<>();
-        if (!hits.isEmpty()) {
-            setViewStats = hits.stream()
-                    .map(hit -> new ViewStats().setUri(hit.getUri()).setApp(hit.getApp()).setHits(0))
-                    .collect(Collectors.toSet());
+        List<ViewStats> viewStatsList;
+        if (uris != null && !uris.isEmpty()) {
             if (unique) {
-                //учитываем только уникальные ip
-                Set<Hit> uniqueHits = hits.stream()
-                        .map(hit -> new Hit().setApp(hit.getApp()).setUri(hit.getUri()).setIp(hit.getIp()))
-                        .collect(Collectors.toSet());
-                setViewStats.forEach(viewStats ->
-                        uniqueHits.forEach(hit -> {
-                            if (hit.getApp().equals(viewStats.getApp()) && hit.getUri().equals(viewStats.getUri())) {
-                                viewStats.setHits(viewStats.getHits() + 1);
-                            }
-                        })
-                );
+                viewStatsList = hitRepository.findAllByTimestampBetweenAndUriInUniqueIp(start, end, uris);
             } else {
-                setViewStats.forEach(viewStats ->
-                        hits.forEach(hit -> {
-                            if (hit.getApp().equals(viewStats.getApp()) && hit.getUri().equals(viewStats.getUri())) {
-                                viewStats.setHits(viewStats.getHits() + 1);
-                            }
-                        })
-                );
+                viewStatsList = hitRepository.findAllByTimestampBetweenAndUriInNotUniqueIp(start, end, uris);
+            }
+        } else {
+            if (unique) {
+                viewStatsList = hitRepository.findAllByTimestampBetweenUniqueIp(start, end);
+            } else {
+                viewStatsList = hitRepository.findAllByTimestampBetweenNotUniqueIp(start, end);
             }
         }
-        return setViewStats
-                .stream()
-                .sorted(Comparator.comparing(ViewStats::getHits).reversed())  //по убыванию
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return viewStatsList;
     }
 }

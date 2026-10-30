@@ -43,8 +43,8 @@ public class StatsControllerTest {
     private final ViewStats viewStats = new ViewStats()
             .setApp("testApp")
             .setUri("testUri")
-            .setHits(1);
-    private final Set<ViewStats> listViewStats = new HashSet<>();
+            .setHits(1L);
+    private final List<ViewStats> listViewStats = new ArrayList<>();
     List<String> uris = new ArrayList<>();
 
     @Test
@@ -108,7 +108,7 @@ public class StatsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].app", is(viewStats.getApp())))
                 .andExpect(jsonPath("$.[0].uri", is(viewStats.getUri())))
-                .andExpect(jsonPath("$.[0].hits", is(viewStats.getHits()), Integer.class));
+                .andExpect(jsonPath("$.[0].hits", is(viewStats.getHits()), Long.class));
     }
 
     @Test
@@ -125,6 +125,6 @@ public class StatsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].app", is(viewStats.getApp())))
                 .andExpect(jsonPath("$.[0].uri", is(viewStats.getUri())))
-                .andExpect(jsonPath("$.[0].hits", is(viewStats.getHits()), Integer.class));
+                .andExpect(jsonPath("$.[0].hits", is(viewStats.getHits()), Long.class));
     }
 }

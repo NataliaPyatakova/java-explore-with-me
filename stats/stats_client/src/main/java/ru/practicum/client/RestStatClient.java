@@ -1,5 +1,6 @@
 package ru.practicum.client;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -12,17 +13,19 @@ import ru.practicum.dto.ViewStats;
 
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.HashSet;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Component
+@Slf4j
 public class RestStatClient implements StatClient {
 
     private final RestClient restClient;
     private final String statsUrl;
+    private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public RestStatClient(@Value("http://localhost:9090") String statsUrl) {
+    public RestStatClient(@Value("${stats.server.url}") String statsUrl) {
         this.restClient = RestClient.create();
         this.statsUrl = statsUrl;
     }
@@ -38,21 +41,21 @@ public class RestStatClient implements StatClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (ResourceAccessException e) {
-            System.out.println("Сервис статистики не запущен! Не могу сохранить статистику.");
+            log.info("Сервис статистики не запущен! Не могу сохранить статистику.");
         }
     }
 
     @Override
-    public Set<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+    public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         URI uri = UriComponentsBuilder.fromUriString(statsUrl + "/stats")
-                .queryParam("start", start)
-                .queryParam("end", end)
+                .queryParam("start", start.format(dtf))
+                .queryParam("end", end.format(dtf))
                 .queryParam("uris", uris)
                 .queryParam("unique", unique)
                 .build()
                 .encode()
                 .toUri();
-        Set<ViewStats> result = new HashSet<>();
+        List<ViewStats> result = new ArrayList<>();
         try {
             result = restClient.get()
                     .uri(uri)
@@ -60,7 +63,7 @@ public class RestStatClient implements StatClient {
                     .body(new ParameterizedTypeReference<>() {
                     });
         } catch (ResourceAccessException e) {
-            System.out.println("Сервис статистики не запущен! Не могу получить статистику.");
+            log.info("Сервис статистики не запущен! Не могу получить статистику.");
         }
         return result;
     }

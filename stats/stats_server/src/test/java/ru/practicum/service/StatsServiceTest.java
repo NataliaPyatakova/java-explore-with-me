@@ -11,12 +11,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.EndpointHit;
 import ru.practicum.dto.ViewStats;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.model.Hit;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Transactional
 @SpringBootTest
@@ -91,7 +91,7 @@ public class StatsServiceTest {
     @Test
     @DisplayName("Получение stats - без хитов, без uri, без уникальных ip")
     public void testGetStatsNoHitsNoUriNoUniqueIp() {
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
         Assertions.assertEquals(0, resultSet.size());
     }
 
@@ -99,7 +99,7 @@ public class StatsServiceTest {
     @DisplayName("Получение stats - без хитов, с uri, без уникальных ip")
     public void testGetStatsNoHitsWithUriNoUniqueIp() {
         uris.add(endpointHit.getUri());
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
         Assertions.assertEquals(0, resultSet.size());
     }
 
@@ -107,7 +107,7 @@ public class StatsServiceTest {
     @DisplayName("Получение stats - без хитов, с uri, c уникальными ip")
     public void testGetStatsNoHitsWithUriWithUniqueIp() {
         uris.add(endpointHit.getUri());
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, true);
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, true);
         Assertions.assertEquals(0, resultSet.size());
     }
 
@@ -115,8 +115,8 @@ public class StatsServiceTest {
     @DisplayName("Получение stats - по 1му хиту, без uri, без уникальных ip")
     public void testGetStats1HitNoUriNoUniqueIp() {
         statsService.save(endpointHit);
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(1, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -128,8 +128,8 @@ public class StatsServiceTest {
     public void testGetStats2HitNoUriNoUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(2, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -142,8 +142,8 @@ public class StatsServiceTest {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
         uris.add(endpointHit.getUri());
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(2, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -155,8 +155,8 @@ public class StatsServiceTest {
     public void testGetStats2DiffHitNoUriNoUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameIpAnotherApp); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(2, resultSet.size());
         Assertions.assertEquals(1, result.getHits()); //не важно кто - у них должно быть по 1му хиту
     }
@@ -166,8 +166,8 @@ public class StatsServiceTest {
     public void testGetStats2DiffHit1NoUriNoUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameIpAnotherUri); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(2, resultSet.size());
         Assertions.assertEquals(1, result.getHits()); //не важно кто - у них должно быть по 1му хиту
     }
@@ -177,8 +177,8 @@ public class StatsServiceTest {
     public void testGetStats2DiffHit2NoUriNoUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameIpAnotherAppAnotherUri); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(2, resultSet.size());
         Assertions.assertEquals(1, result.getHits()); //не важно кто - у них должно быть по 1му хиту
     }
@@ -189,8 +189,8 @@ public class StatsServiceTest {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameIpAnotherAppAnotherUri); //не пройдет
         uris.add(endpointHit.getUri());
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(1, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -203,8 +203,8 @@ public class StatsServiceTest {
     public void testGetStats2DiffHit2NoUriNoUniqueIpDateFilter() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameIpAnotherAppAnotherUriDiffDate); //не пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(1, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -217,8 +217,8 @@ public class StatsServiceTest {
     public void testGetStats2SameHitNoUriNoUniqueIpDateFilter() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitSameAllDiffDate); //не пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(1, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -231,8 +231,8 @@ public class StatsServiceTest {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHit); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(3, result.getHits()); //схлопнулись в 1 запись
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -247,8 +247,8 @@ public class StatsServiceTest {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
         statsService.save(endpointHitSameIpAnotherAppAnotherUri); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(2, resultSet.size());
         Assertions.assertEquals(2, result.getHits()); //у первого 2 хита
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -259,8 +259,8 @@ public class StatsServiceTest {
     @DisplayName("Получение stats - по 1му хиту, без uri, с уникальными ip")
     public void testGetStats1HitNoUriWithUniqueIp() {
         statsService.save(endpointHit); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(1, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -273,8 +273,8 @@ public class StatsServiceTest {
     public void testGetStats2HitNoUriWithUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size()); //1 запись
         Assertions.assertEquals(2, result.getHits()); //на 2 хита
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -287,8 +287,8 @@ public class StatsServiceTest {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHit); //не пройдет
         statsService.save(endpointHit); //не пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size()); //1 запись
         Assertions.assertEquals(1, result.getHits()); //на 1 хит
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -297,14 +297,13 @@ public class StatsServiceTest {
 
     @Test
     @DisplayName("Получение stats - по 3м хитам с одинаковым app и одинаковым uri и разными ip, без фильтрацией по uri, " +
-            "с уникальными ip, с сортировкой")
-    public void testGetStats3DiffHit2NoUriWithUniqueIpSorted() {
-        //В теле ответа должна соблюдаться сортировка по убыванию количества просмотров
+            "с уникальными ip")
+    public void testGetStats3DiffHit2NoUriWithUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
         statsService.save(endpointHitOtherIp2); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());  //схлопнулись
         Assertions.assertEquals(3, result.getHits()); //в 3 хита
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -313,14 +312,13 @@ public class StatsServiceTest {
 
     @Test
     @DisplayName("Получение stats - по 3м хитам с одинаковым app и одинаковым uri и одинаковыми ip у 2," +
-            " без фильтрацией по uri, с уникальными ip, с сортировкой")
-    public void testGetStats3SameHit2NoUriWithUniqueIpSorted() {
-        //В теле ответа должна соблюдаться сортировка по убыванию количества просмотров
+            " без фильтрацией по uri, с уникальными ip")
+    public void testGetStats3SameHit2NoUriWithUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHit); //не пройдет
         statsService.save(endpointHitOtherIp2); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, null, true);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());  //схлопнулись
         Assertions.assertEquals(2, result.getHits()); //в 2 хита
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
@@ -332,11 +330,23 @@ public class StatsServiceTest {
     public void testGetStats2HitEmptyUriNoUniqueIp() {
         statsService.save(endpointHit); //пройдет
         statsService.save(endpointHitOtherIp); //пройдет
-        Set<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
-        ViewStats result = resultSet.iterator().next();
+        List<ViewStats> resultSet = statsService.getStats(startTime, endTime, uris, false);
+        ViewStats result = resultSet.getFirst();
         Assertions.assertEquals(1, resultSet.size());
         Assertions.assertEquals(2, result.getHits());
         Assertions.assertEquals(endpointHit.getApp(), result.getApp());
         Assertions.assertEquals(endpointHit.getUri(), result.getUri());
+    }
+
+    @Test
+    @DisplayName("Получение stats - неверные даты")
+    public void testGetStatsWrongDate() {
+        statsService.save(endpointHit); //пройдет
+        statsService.save(endpointHitOtherIp); //пройдет
+        try {
+            statsService.getStats(endTime, startTime, uris, false);
+        } catch (BadRequestException ex) {
+            Assertions.assertEquals("Дата начала позже даты конца", ex.getMessage());
+        }
     }
 }
