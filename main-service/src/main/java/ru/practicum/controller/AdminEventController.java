@@ -9,9 +9,12 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.ParamEventsFindByAdmin;
 import ru.practicum.dto.event.UpdateEventAdminRequest;
+import ru.practicum.enumeration.EventState;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -37,12 +40,23 @@ public class AdminEventController {
                 users, states, categories, rangeStart, rangeEnd, from, size);
         ParamEventsFindByAdmin params = new ParamEventsFindByAdmin()
                 .setUsers(users)
-                .setStates(states)
                 .setCategories(categories)
                 .setRangeStart(rangeStart)
                 .setRangeEnd(rangeEnd)
                 .setFrom(from)
                 .setSize(size);
+        List<EventState> listEventState = new ArrayList<>();
+        if (states != null) {
+            states.forEach(state -> {
+                        try {
+                            listEventState.add(EventState.valueOf(state));
+                        } catch (IllegalArgumentException e) {
+                            throw new BadRequestException("Bad request", "Parameter state could be PENDING or PUBLISHED or CANCELED");
+                        }
+                    }
+            );
+            params.setStates(listEventState);
+        }
         return eventService.findEventsByAdmin(params);
     }
 

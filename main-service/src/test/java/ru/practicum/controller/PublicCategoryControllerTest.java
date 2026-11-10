@@ -29,7 +29,7 @@ public class PublicCategoryControllerTest {
     private CategoryService categoryService;
 
     private final CategoryDto categoryDto = new CategoryDto().setId(1L).setName("test_name");
-    List<CategoryDto> categoryDtoList = new ArrayList<>();
+    private final List<CategoryDto> categoryDtoList = new ArrayList<>();
 
     @Test
     @DisplayName("Get user - все хорошо")

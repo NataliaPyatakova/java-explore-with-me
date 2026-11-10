@@ -18,12 +18,6 @@ public interface EventService {
 
     List<EventShortDto> findAllByIdIn(List<Long> ids);
 
-    Map<Long, ParamEventDto> calcStatistic(List<Long> ids);
-
-    List<ParticipationRequestDto> findRequestsByEventId(Long eventId, Long userId);
-
-    EventRequestStatusUpdateResult updateRequestsStatus(EventRequestStatusUpdateRequest dto, Long eventId, Long userId);
-
     List<EventShortDto> findEventsByUserId(ParamEventFindByUser params);
 
     EventFullDto findEventByIdAndByUserId(Long eventId, Long userId);
@@ -33,5 +27,11 @@ public interface EventService {
     EventFullDto findPublishedEventById(Long id);
 
     List<EventShortDto> findPublishedEventsByParam(ParamEventsFindByParam params);
+
+    List<ParticipationRequestDto> findRequestsByEventId(Long eventId, Long userId);
+
+    EventRequestStatusUpdateResult updateRequestsStatus(EventRequestStatusUpdateRequest dto, Long eventId, Long userId);
+
+    Map<Long, ParamEventDto> calcStatistic(List<Long> ids);
 
 }

@@ -9,6 +9,7 @@ import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.ParamEventsFindByParam;
 import ru.practicum.enumeration.Sort;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
@@ -35,18 +36,25 @@ public class PublicEventController {
                                                           @RequestParam(value = "sort", required = false) String sort,
                                                           @RequestParam(value = "from", defaultValue = "0") Integer from,
                                                           @RequestParam(value = "size", defaultValue = "10") Integer size) {
-        log.info("PublicEventController findPublishedEventsByParam text {} categories {} paid {} rangeStart {} rangeEnd {} " +
-                        "onlyAvailable {} sort {} from {} size {}",
+        log.info("PublicEventController findPublishedEventsByParam text {}, categories {}, paid {}, rangeStart {}, " +
+                        "rangeEnd {}, onlyAvailable {}, sort {}, from {}, size {}",
                 text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
         ParamEventsFindByParam params = new ParamEventsFindByParam()
                 .setText(text)
                 .setCategories(categories)
+                .setPaid(paid)
                 .setRangeStart(rangeStart)
                 .setRangeEnd(rangeEnd)
                 .setOnlyAvailable(onlyAvailable)
-                .setSort(Sort.valueOf(sort))
                 .setFrom(from)
                 .setSize(size);
+        if (sort != null) {
+            try {
+                params.setSort(Sort.valueOf(sort));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Bad request","Parameter sort could be EVENT_DATE or VIEWS");
+            }
+        }
         return eventService.findPublishedEventsByParam(params);
     }
 

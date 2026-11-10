@@ -27,4 +27,17 @@ public class UpdateEventRequest {
     private Boolean paid;
     private Integer participantLimit;
     private Boolean requestModeration;
+
+    @Override
+    public String toString() {
+        return "title='" + title + '\'' +
+                ", annotation='" + annotation + '\'' +
+                ", description='" + description + '\'' +
+                ", category=" + category +
+                ", eventDate=" + eventDate +
+                ", locationDto=" + locationDto +
+                ", paid=" + paid +
+                ", participantLimit=" + participantLimit +
+                ", requestModeration=" + requestModeration;
+    }
 }

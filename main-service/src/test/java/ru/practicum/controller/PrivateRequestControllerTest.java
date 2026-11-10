@@ -44,7 +44,7 @@ public class PrivateRequestControllerTest {
             .setEvent(1L)
             .setStatus(RequestStatus.CANCELED)
             .setCreated(now);
-    List<ParticipationRequestDto> list = new ArrayList<>();
+    private final List<ParticipationRequestDto> list = new ArrayList<>();
 
     @Test
     @DisplayName("Post request - все хорошо")

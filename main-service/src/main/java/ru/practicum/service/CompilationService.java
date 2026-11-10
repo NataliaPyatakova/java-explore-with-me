@@ -18,4 +18,5 @@ public interface CompilationService {
     CompilationDto findById(Long compId);
 
     List<CompilationDto> findAll(ParamCompilationFindAll params);
+
 }

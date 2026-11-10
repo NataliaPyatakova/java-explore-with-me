@@ -35,8 +35,8 @@ public class EventMapperTest {
             .setPaid(true)
             .setRequestModeration(true)
             .setParticipantLimit(0)
-            .setLocationDto(locationDto);
-    private final ParamEventSave paramEventSave = new ParamEventSave(initiator, category);
+            .setLocation(locationDto);
+    private final ParamEventSave paramEventSave = new ParamEventSave(initiator, category, location);
     private final Event event = new Event()
             .setId(2L)
             .setTitle("event")
@@ -61,7 +61,7 @@ public class EventMapperTest {
             .setPaid(true)
             .setRequestModeration(true)
             .setParticipantLimit(0)
-            .setLocationDto(locationDto)
+            .setLocation(locationDto)
             .setInitiator(initiatorShort)
             .setCategory(categoryDto)
             .setCreatedOn(date)
@@ -129,8 +129,7 @@ public class EventMapperTest {
         Assertions.assertEquals(newDto.getRequestModeration(), result.isRequestModeration());
         Assertions.assertEquals(initiator, result.getInitiator());
         Assertions.assertEquals(category, result.getCategory());
-        Assertions.assertEquals(newDto.getLocationDto().getLon(), result.getLocation().getLon());
-        Assertions.assertEquals(newDto.getLocationDto().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(location, result.getLocation());
     }
 
     @Test
@@ -157,8 +156,8 @@ public class EventMapperTest {
         Assertions.assertEquals(event.getAnnotation(), result.getAnnotation());
         Assertions.assertEquals(event.getDescription(), result.getDescription());
         Assertions.assertEquals(event.getEventDate(), result.getEventDate());
-        Assertions.assertEquals(event.getLocation().getLon(), result.getLocationDto().getLon());
-        Assertions.assertEquals(event.getLocation().getLat(), result.getLocationDto().getLat());
+        Assertions.assertEquals(event.getLocation().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(event.getLocation().getLat(), result.getLocation().getLat());
         Assertions.assertEquals(event.isPaid(), result.getPaid());
         Assertions.assertEquals(event.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(event.isRequestModeration(), result.getRequestModeration());
@@ -181,8 +180,8 @@ public class EventMapperTest {
         Assertions.assertEquals(eventFullDto.getAnnotation(), result.getAnnotation());
         Assertions.assertEquals(eventFullDto.getDescription(), result.getDescription());
         Assertions.assertEquals(eventFullDto.getEventDate(), result.getEventDate());
-        Assertions.assertEquals(eventFullDto.getLocationDto().getLon(), result.getLocation().getLon());
-        Assertions.assertEquals(eventFullDto.getLocationDto().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(eventFullDto.getLocation().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(eventFullDto.getLocation().getLat(), result.getLocation().getLat());
         Assertions.assertEquals(eventFullDto.getPaid(), result.isPaid());
         Assertions.assertEquals(eventFullDto.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(eventFullDto.getRequestModeration(), result.isPaid());

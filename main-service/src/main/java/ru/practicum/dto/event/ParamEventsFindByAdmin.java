@@ -2,6 +2,7 @@ package ru.practicum.dto.event;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
+import ru.practicum.enumeration.EventState;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
 public class ParamEventsFindByAdmin {
 
     private List<Long> users;
-    private List<String> states;
+    private List<EventState> states;
     private List<Long> categories;
     private LocalDateTime rangeStart;
     private LocalDateTime rangeEnd;

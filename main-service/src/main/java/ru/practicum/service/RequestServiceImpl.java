@@ -85,6 +85,9 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> findByEventId(Long eventId) {
         log.info("findByEventId request eventId {}", eventId);
+        eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found",
+                        "The required object was not found."));
         List<Request> requests = requestRepository.findByEventId(eventId);
         return requests.stream().map(RequestMapper::mapToDtoFromRequest).toList();
     }
@@ -96,27 +99,37 @@ public class RequestServiceImpl implements RequestService {
         EventRequestStatusUpdateResult result = new EventRequestStatusUpdateResult();
         //если у события указан лимит - проверим-ка сколько у него одобренных заявок
         //если при подтверждении данной заявки, лимит заявок для события исчерпан, то все неподтверждённые заявки необходимо отклонить
-        if (event.getParticipantLimit() > 0) {
+        //только для ПОДТВЕРЖДЕНИЯ
+        if (dto.getStatus().equals(RequestStatus.CONFIRMED) && event.getParticipantLimit() > 0) {
             List<Request> request = requestRepository.findByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
             //если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
-            if (!request.isEmpty()
-                    && (request.size() >= event.getParticipantLimit()
-                    || request.size() + dto.getRequestIds().size() >= event.getParticipantLimit())) {
+            if (!request.isEmpty() //заявки были
+                    && (request.size() >= event.getParticipantLimit() //и их уже больше или равно лимиту
+                    || request.size() + dto.getRequestIds().size() > event.getParticipantLimit())) { //или же они плюс то что на входе превысят лимит
+                throw new ValidationException("The participant limit has been reached",
+                        "For the requested operation the conditions are not met.");
+            }
+            //заявок подтвержденных не было, но сам размер заявок на входе больше лимита
+            if (request.isEmpty() && dto.getRequestIds().size() > event.getParticipantLimit()) {
                 throw new ValidationException("The participant limit has been reached",
                         "For the requested operation the conditions are not met.");
             }
         }
         List<Request> requests = requestRepository.findAllById(dto.getRequestIds());
-        //заявки должны быть все в состоянии PENDING 409
+        //сначала проверяем корректность данных - если хоть одтн косяк на выход
         requests.forEach(request -> {
             if (!request.getEvent().getId().equals(event.getId())) {
                 throw new BadRequestException("Requests must belong to current Event",
                         "Incorrectly made request.");
             }
+            //заявки должны быть все в состоянии PENDING 409
             if (!request.getStatus().equals(RequestStatus.PENDING)) {
                 throw new BadRequestException("Request must have status PENDING",
                         "Incorrectly made request.");
             }
+        });
+        //теперь передергиваем данные
+        requests.forEach(request -> {
             if (dto.getStatus().equals(RequestStatus.CONFIRMED)) {
                 request.setStatus(RequestStatus.CONFIRMED);
                 result.getConfirmedRequests().add(RequestMapper.mapToDtoFromRequest(request));

@@ -43,10 +43,9 @@ public class CompilationServiceImpl implements CompilationService {
         log.info("save compilation {}", newDto);
         Result events = getEvents(newDto.getEvents());
         Compilation compilation = CompilationMapper.mapToCompilationForCreate(newDto, events.eventList());
-        return CompilationMapper.mapToCompilationDtoFromCompilation(compilationRepository.save(compilation),
-                events.eventShortDtoList());
+        Compilation result = compilationRepository.save(compilation);
+        return CompilationMapper.mapToCompilationDtoFromCompilation(result, events.eventShortDtoList());
     }
-
 
     @Override
     @Transactional
@@ -55,8 +54,8 @@ public class CompilationServiceImpl implements CompilationService {
         Compilation foundedComp = findCompilationById(compId);
         Result events = getEvents(updateDto.getEvents());
         Compilation compilation = CompilationMapper.mapToCompilationForUpdate(foundedComp, updateDto, events.eventList());
-        return CompilationMapper.mapToCompilationDtoFromCompilation(compilationRepository.save(compilation),
-                events.eventShortDtoList());
+        Compilation updatedCompilation = compilationRepository.save(compilation);
+        return CompilationMapper.mapToCompilationDtoFromCompilation(updatedCompilation, events.eventShortDtoList());
     }
 
     @Override
@@ -98,11 +97,10 @@ public class CompilationServiceImpl implements CompilationService {
         Map<Long, ParamEventDto> mapParams = eventService.calcStatistic(ids);
         //мапим
         Map<Long, List<EventShortDto>> mapEvents = new HashMap<>();
-        compilationList.forEach(compilation -> {
-            mapEvents.computeIfAbsent(compilation.getId(),
-                    k -> compilation.getEvents().stream().map(event ->
-                            EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList());
-        });
+        compilationList.forEach(compilation ->
+                mapEvents.computeIfAbsent(compilation.getId(),
+                        k -> compilation.getEvents().stream().map(event ->
+                                EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList()));
         return compilationList.stream().map(comp ->
                 CompilationMapper.mapToCompilationDtoFromCompilation(comp, mapEvents.get(comp.getId()))).toList();
     }
@@ -118,8 +116,10 @@ public class CompilationServiceImpl implements CompilationService {
             return new Result(new ArrayList<>(), new ArrayList<>());
         }
         List<EventShortDto> eventShortDtoList = eventService.findAllByIdIn(ids);
+        List<EventShortDto> eventShortDtoListForResult = new ArrayList<>(eventShortDtoList);
         List<Event> eventList = eventShortDtoList.stream().map(EventMapper::mapFromEventShortDtoToEvent).toList();
-        return new Result(eventList, eventShortDtoList);
+        List<Event> eventListForResult = new ArrayList<>(eventList); //иначе они immutable и отвалятся на save
+        return new Result(eventListForResult, eventShortDtoListForResult);
     }
 
     private record Result(List<Event> eventList, List<EventShortDto> eventShortDtoList) {

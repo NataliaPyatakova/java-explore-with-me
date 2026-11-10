@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS events (
     published_on TIMESTAMP,
     event_state VARCHAR(20) NOT NULL,
     CONSTRAINT pk_events PRIMARY KEY (id),
-    CONSTRAINT fk_events_cat FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    CONSTRAINT fk_events_cat FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
     CONSTRAINT fk_events_user FOREIGN KEY (initiator_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_events_location FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
 );

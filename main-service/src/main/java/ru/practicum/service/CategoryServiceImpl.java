@@ -12,9 +12,12 @@ import ru.practicum.dto.category.CategoryDto;
 import ru.practicum.dto.category.NewCategoryDto;
 import ru.practicum.dto.category.ParamCategoryFindAll;
 import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
+import ru.practicum.model.Event;
 import ru.practicum.repository.CategoryRepository;
+import ru.practicum.repository.EventRepository;
 
 import java.util.List;
 
@@ -25,6 +28,7 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final EventRepository eventRepository;
 
     @Override
     @Transactional
@@ -39,7 +43,10 @@ public class CategoryServiceImpl implements CategoryService {
     public void delete(Long id) {
         log.info("delete category id {}", id);
         findCategoryById(id);
-        //TODO проверить удаление со связанными событиями
+        List<Event> list = eventRepository.findAllByCategoryId(id);
+        if (!list.isEmpty()) {
+            throw new ValidationException("Validation Exception", "There is an event with the same category id");
+        }
         categoryRepository.deleteById(id);
     }
 
