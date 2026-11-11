@@ -10,8 +10,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
+import ru.practicum.enumeration.AdminEventStateAction;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.enumeration.RequestStatus;
+import ru.practicum.enumeration.UserEventStateAction;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.EventMapper;
@@ -38,8 +40,10 @@ public class EventServiceTest {
     private final LocalDateTime date = LocalDateTime.now().plusDays(1);
     private final LocalDateTime now = LocalDateTime.now();
     private final Category category = new Category().setName("test_category");
+    private final Category category2 = new Category().setName("test_category2");
     private final Location location = new Location().setLat(15.15).setLon(16.16);
     private final LocationDto locationDto = new LocationDto().setLat(15.15).setLon(16.16);
+    private final LocationDto locationDto2 = new LocationDto().setLat(5.8).setLon(8.7);
     private final User initiator = new User()
             .setEmail("email_initiator@")
             .setName("initiator_name");
@@ -67,6 +71,24 @@ public class EventServiceTest {
     private final User requester = new User()
             .setEmail("requester_email")
             .setName("requester_name");
+    private final UpdateEventUserRequest updateEventUserRequest = (UpdateEventUserRequest) new UpdateEventUserRequest()
+            .setTitle("updateEventUserRequest")
+            .setDescription("updateEventUserRequest_description")
+            .setAnnotation("updateEventUserRequest_annotation")
+            .setEventDate(date.plusDays(1))
+            .setParticipantLimit(1)
+            .setPaid(false)
+            .setRequestModeration(false)
+            .setLocation(locationDto2);
+    private final UpdateEventAdminRequest updateEventAdminRequest = (UpdateEventAdminRequest) new UpdateEventAdminRequest()
+            .setTitle("UpdateEventAdminRequest")
+            .setDescription("UpdateEventAdminRequest_description")
+            .setAnnotation("UpdateEventAdminRequest_annotation")
+            .setEventDate(date.plusDays(1))
+            .setParticipantLimit(1)
+            .setPaid(false)
+            .setRequestModeration(false)
+            .setLocation(locationDto2);
 
     @Test
     @DisplayName("Сохранение event - все хорошо")
@@ -135,74 +157,461 @@ public class EventServiceTest {
             Assertions.assertEquals("The required object was not found.", e.getReason());
         }
     }
-    /*
-        @Override
-    public EventFullDto updateByInitiator(UpdateEventUserRequest updateDto, Long eventId, Long userId) {
-        log.info("updateByInitiator event updateDto {} eventId {} userId {}", updateDto, eventId, userId);
-        Event foundedEvent = findEventById(eventId);
-        User user = UserMapper.mapToUserFromUserDto(userService.findById(userId));
-        //TODO проверить на пустой категории в Юнит тестировании
-        Category category = CategoryMapper.mapToCategoryFromCategoryDto(categoryService.findById(updateDto.getCategory()));
-        //изменить можно только отмененные события или события в состоянии ожидания модерации
-        if (foundedEvent.getState().equals(EventState.PUBLISHED)) {
-            throw new ValidationException("Field: state. Error: изменить можно только отмененные события или события в " +
-                    "состоянии ожидания модерации. Value: " + foundedEvent.getState(),
-                    "For the requested operation the conditions are not met.");
+
+    @Test
+    @DisplayName("Обновление event от user - неизвестное событие")
+    public void testUpdateByInitiatorWrongEventId() {
+        em.persist(initiator);
+        try {
+            eventService.updateByInitiator(updateEventUserRequest, 999L, initiator.getId());
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=999 was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
         }
-        //дата и время на которые намечено событие не может быть раньше, чем через два часа от текущего момента
-        if (updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidationException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
-                    + updateDto.getEventDate().format(dtf),
-                    "For the requested operation the conditions are not met.");
-        }
-        //текущий пользователь должен быть инициатором события
-        if (foundedEvent.getInitiator().getId().equals(user.getId())) {
-            throw new ValidationException("Current user isn't an initiator of current event",
-                    "For the requested operation the conditions are not met.");
-        }
-        //TODO обработать NewEventState stateAction после тестирования постман
-        List<Long> ids = new ArrayList<>();
-        ids.add(eventId);
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
-        ParamEventUpdate params = new ParamEventUpdate().setCategory(category);
-        Event event = EventMapper.mapFromUpdateEventUserRequestToEvent(foundedEvent, updateDto, params);
-        return EventMapper.mapFromEventToEventFullDto(eventRepository.save(event), mapParams.get(eventId));
     }
 
-    @Override
-    public EventFullDto updateByAdmin(UpdateEventAdminRequest updateDto, Long eventId) {
-        log.info("updateByAdmin event updateDto {} eventId {}", updateDto, eventId);
-        Event foundedEvent = findEventById(eventId);
-        //TODO проверить на пустой категории в Юнит тестировании
-        Category category = CategoryMapper.mapToCategoryFromCategoryDto(categoryService.findById(updateDto.getCategory()));
-        // дата начала изменяемого события должна быть не ранее чем за час от даты публикации. (Ожидается код ошибки 409)
-        if (updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-            throw new ValidationException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
-                    + updateDto.getEventDate().format(dtf),
-                    "For the requested operation the conditions are not met.");
+    @Test
+    @DisplayName("Обновление event от user - неизвестный user")
+    public void testUpdateByInitiatorWrongUserId() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        try {
+            eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), 999L);
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("User with id=999 was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
         }
-        //событие можно публиковать, только если оно в состоянии ожидания публикации (Ожидается код ошибки 409)
-        if (AdminEventStateAction.PUBLISH_EVENT.equals(updateDto.getStateAction())
-                && !foundedEvent.getState().equals(EventState.PENDING)) {
-            throw new ValidationException("Cannot publish the event because it's not in the right state: "
-                    + foundedEvent.getState(),
-                    "For the requested operation the conditions are not met.");
-        }
-        //событие можно отклонить, только если оно еще не опубликовано (Ожидается код ошибки 409)
-        if (AdminEventStateAction.REJECT_EVENT.equals(updateDto.getStateAction())
-                && foundedEvent.getState().equals(EventState.PUBLISHED)) {
-            throw new ValidationException("Cannot reject the event because it's not in the right state: "
-                    + foundedEvent.getState(),
-                    "For the requested operation the conditions are not met.");
-        }
-        List<Long> ids = new ArrayList<>();
-        ids.add(eventId);
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
-        ParamEventUpdate params = new ParamEventUpdate().setCategory(category);
-        Event event = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateDto, params);
-        return EventMapper.mapFromEventToEventFullDto(eventRepository.save(event), mapParams.get(eventId));
     }
-     */
+
+    @Test
+    @DisplayName("Обновление event от user - неверное состояние")
+    public void testUpdateByInitiatorWrongState() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        try {
+            //пытаемся изменить опубликованное
+            eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Field: state. Error: изменить можно только отмененные события или события в " +
+                    "состоянии ожидания модерации. Value: PUBLISHED", e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - неверная дата")
+    public void testUpdateByInitiatorWrongDate() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        updateEventUserRequest.setEventDate(now.plusHours(1));
+        try {
+            //пытаемся изменить опубликованное
+            eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Field: eventDate. Error: должно содержать дату, " +
+                    "которая еще не наступила. Value: " + now.plusHours(1).format(dtf), e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - пользователь должен быть инициатором события")
+    public void testUpdateByInitiatorWrongInitiator() {
+        //сейв
+        em.persist(initiator);
+        em.persist(initiator2);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        try {
+            eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator2.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Current user isn't an initiator of current event", e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - заполнены все поля")
+    public void testUpdateByInitiatorWithCategory() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        em.persist(category2);
+        updateEventUserRequest.setCategory(category2.getId());
+        updateEventUserRequest.setStateAction(UserEventStateAction.SEND_TO_REVIEW);
+        EventFullDto result = eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(updateEventUserRequest.getTitle(), result.getTitle());
+        Assertions.assertEquals(updateEventUserRequest.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(updateEventUserRequest.getDescription(), result.getDescription());
+        Assertions.assertEquals(updateEventUserRequest.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(updateEventUserRequest.getPaid(), result.getPaid());
+        Assertions.assertEquals(updateEventUserRequest.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(updateEventUserRequest.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(updateEventUserRequest.getCategory(), result.getCategory().getId());
+        Assertions.assertEquals(updateEventUserRequest.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertEquals(eventFullDto.getPublishedOn(), result.getPublishedOn());
+        Assertions.assertEquals(eventFullDto.getState(), result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - заполнены все поля кроме категории")
+    public void testUpdateByInitiatorEmptyCategory() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        updateEventUserRequest.setStateAction(UserEventStateAction.SEND_TO_REVIEW);
+        EventFullDto result = eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(updateEventUserRequest.getTitle(), result.getTitle());
+        Assertions.assertEquals(updateEventUserRequest.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(updateEventUserRequest.getDescription(), result.getDescription());
+        Assertions.assertEquals(updateEventUserRequest.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(updateEventUserRequest.getPaid(), result.getPaid());
+        Assertions.assertEquals(updateEventUserRequest.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(updateEventUserRequest.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getCategory());
+        Assertions.assertEquals(updateEventUserRequest.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertEquals(eventFullDto.getPublishedOn(), result.getPublishedOn());
+        Assertions.assertEquals(eventFullDto.getState(), result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - заполнены все поля кроме location")
+    public void testUpdateByInitiatorNoLocation() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        em.persist(category2);
+        updateEventUserRequest.setCategory(category2.getId());
+        updateEventUserRequest.setStateAction(UserEventStateAction.SEND_TO_REVIEW);
+        updateEventUserRequest.setLocation(null);
+        EventFullDto result = eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(updateEventUserRequest.getTitle(), result.getTitle());
+        Assertions.assertEquals(updateEventUserRequest.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(updateEventUserRequest.getDescription(), result.getDescription());
+        Assertions.assertEquals(updateEventUserRequest.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(updateEventUserRequest.getPaid(), result.getPaid());
+        Assertions.assertEquals(updateEventUserRequest.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(updateEventUserRequest.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(updateEventUserRequest.getCategory(), result.getCategory().getId());
+        Assertions.assertEquals(eventFullDto.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertEquals(eventFullDto.getPublishedOn(), result.getPublishedOn());
+        Assertions.assertEquals(eventFullDto.getState(), result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - меняем только статус - на ревью")
+    public void testUpdateByInitiatorOnlyState() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        updateEventUserRequest.setTitle(null);
+        updateEventUserRequest.setAnnotation(null);
+        updateEventUserRequest.setDescription(null);
+        updateEventUserRequest.setEventDate(null);
+        updateEventUserRequest.setPaid(null);
+        updateEventUserRequest.setParticipantLimit(null);
+        updateEventUserRequest.setRequestModeration(null);
+        updateEventUserRequest.setCategory(null);
+        updateEventUserRequest.setLocation(null);
+        updateEventUserRequest.setStateAction(UserEventStateAction.SEND_TO_REVIEW);
+        EventFullDto result = eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(eventFullDto.getDescription(), result.getDescription());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getPaid());
+        Assertions.assertEquals(eventFullDto.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(eventFullDto.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getCategory());
+        Assertions.assertEquals(eventFullDto.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertEquals(eventFullDto.getPublishedOn(), result.getPublishedOn());
+        //при отправке на ревью статус не меняется (?)
+        Assertions.assertEquals(eventFullDto.getState(), result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от user - меняем только статус - отмена ревью")
+    public void testUpdateByInitiatorOnlyStateCancel() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        updateEventUserRequest.setTitle(null);
+        updateEventUserRequest.setAnnotation(null);
+        updateEventUserRequest.setDescription(null);
+        updateEventUserRequest.setEventDate(null);
+        updateEventUserRequest.setPaid(null);
+        updateEventUserRequest.setParticipantLimit(null);
+        updateEventUserRequest.setRequestModeration(null);
+        updateEventUserRequest.setCategory(null);
+        updateEventUserRequest.setLocation(null);
+        updateEventUserRequest.setStateAction(UserEventStateAction.CANCEL_REVIEW);
+        EventFullDto result = eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(eventFullDto.getDescription(), result.getDescription());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getPaid());
+        Assertions.assertEquals(eventFullDto.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(eventFullDto.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getCategory());
+        Assertions.assertEquals(eventFullDto.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertEquals(eventFullDto.getPublishedOn(), result.getPublishedOn());
+        Assertions.assertEquals(EventState.CANCELED, result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - неизвестное событие")
+    public void testUpdateByAdminWrongEventId() {
+        em.persist(initiator);
+        try {
+            eventService.updateByAdmin(updateEventAdminRequest, 999L);
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=999 was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - неверная дата")
+    public void testUpdateByAdminWrongDate() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        updateEventUserRequest.setEventDate(now.plusMinutes(5));
+        try {
+            eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Field: eventDate. Error: должно содержать дату, " +
+                    "которая еще не наступила. Value: " + now.plusMinutes(5).format(dtf), e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - публикация - неверное состояние")
+    public void testUpdateByAdminWrongState() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        try {
+            //пытаемся изменить опубликованное повторно
+            eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Cannot publish the event because it's not in the right state: PUBLISHED", e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - отклонение публикации - неверное состояние")
+    public void testUpdateByAdminWrongState2() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        try {
+            //пытаемся изменить опубликованное повторно
+            updateEventAdminRequest.setStateAction(AdminEventStateAction.REJECT_EVENT);
+            eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        } catch (ValidationException e) {
+            Assertions.assertEquals("Cannot reject the event because it's not in the right state: PUBLISHED", e.getMessage());
+            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - заполнены все поля - публикация")
+    public void testUpdateByAdminAllPublish() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        em.persist(category2);
+        updateEventAdminRequest.setCategory(category2.getId());
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        EventFullDto result = eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
+        Assertions.assertEquals(updateEventAdminRequest.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(updateEventAdminRequest.getDescription(), result.getDescription());
+        Assertions.assertEquals(updateEventAdminRequest.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(updateEventAdminRequest.getPaid(), result.getPaid());
+        Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(updateEventAdminRequest.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(updateEventAdminRequest.getCategory(), result.getCategory().getId());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertNotNull(result.getPublishedOn());
+        Assertions.assertEquals(EventState.PUBLISHED, result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Обновление event от admin - заполнены все поля - отклонение публикации")
+    public void testUpdateByAdminAllReject() {
+        //сейв
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //апдейт
+        em.persist(category2);
+        updateEventAdminRequest.setCategory(category2.getId());
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.REJECT_EVENT);
+        EventFullDto result = eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
+        Assertions.assertEquals(updateEventAdminRequest.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(updateEventAdminRequest.getDescription(), result.getDescription());
+        Assertions.assertEquals(updateEventAdminRequest.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(updateEventAdminRequest.getPaid(), result.getPaid());
+        Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(updateEventAdminRequest.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(updateEventAdminRequest.getCategory(), result.getCategory().getId());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation(), result.getLocation());
+        //апдейт зависит от входных параметров
+        Assertions.assertNull(result.getPublishedOn());
+        Assertions.assertEquals(EventState.CANCELED, result.getState());
+        //никогда не должны апдейтиться
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        //расчетные
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
 
     @Test
     @DisplayName("Поиск event по eventId и userId - все хорошо")
@@ -622,6 +1031,73 @@ public class EventServiceTest {
         List<EventFullDto> result = eventService.findEventsByAdmin(params);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск опубликованного event - все хорошо")
+    void testFindPublishedEventByIdAllOk() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        EventFullDto result = eventService.findPublishedEventById(eventFullDto.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(eventFullDto.getId(), result.getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(eventFullDto.getDescription(), result.getDescription());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getPaid());
+        Assertions.assertEquals(eventFullDto.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(eventFullDto.getRequestModeration(), result.getRequestModeration());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getCategory());
+        Assertions.assertEquals(eventFullDto.getLocation(), result.getLocation());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getCreatedOn(), result.getCreatedOn());
+        Assertions.assertNotNull(result.getPublishedOn());
+        Assertions.assertEquals(EventState.PUBLISHED, result.getState());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск опубликованного event - не публиковали")
+    void testFindPublishedEventByIdNotPublished() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        try {
+            eventService.findPublishedEventById(eventFullDto.getId());
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=" + eventFullDto.getId() + " was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Поиск опубликованного event - нет такого события")
+    void testFindPublishedEventByIdWrongId() {
+        try {
+            eventService.findPublishedEventById(999L);
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=999 was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
+        }
     }
 
     @Test

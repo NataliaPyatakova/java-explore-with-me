@@ -105,7 +105,7 @@ public class PrivateEventControllerTest {
             .setParticipantLimit(1)
             .setPaid(false)
             .setRequestModeration(false)
-            .setLocationDto(locationDto);
+            .setLocation(locationDto);
 
     @Test
     @DisplayName("Get events по пользователю - все хорошо")

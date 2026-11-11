@@ -1,6 +1,7 @@
 package ru.practicum.dto.event;
 
 import lombok.Data;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import ru.practicum.enumeration.Sort;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
+@ToString
 @Accessors(chain = true)
 public class ParamEventsFindByParam {
 

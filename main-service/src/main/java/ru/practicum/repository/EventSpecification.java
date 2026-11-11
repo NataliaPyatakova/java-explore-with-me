@@ -11,7 +11,7 @@ import java.util.List;
 @Component
 public class EventSpecification {
 
-    public static Specification<Event> hasInitiatorId(Long id){
+    public static Specification<Event> hasInitiatorId(Long id) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.join("initiator").get("id"), id);
     }
@@ -21,23 +21,48 @@ public class EventSpecification {
                 criteriaBuilder.in(root.join("initiator").get("id")).value(ids);
     }
 
-    public static Specification<Event> hasCategoryIdInList(List<Long> ids){
+    public static Specification<Event> hasCategoryIdInList(List<Long> ids) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.in(root.join("category").get("id")).value(ids);
     }
 
-    public static Specification<Event> hasStateInList(List<EventState> states){
+    public static Specification<Event> hasStateInList(List<EventState> states) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.in(root.get("state")).value(states);
     }
 
-    public static Specification<Event> isAfter(LocalDateTime rangeStart){
+    public static Specification<Event> hasState(EventState state) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("state"), state);
+    }
+
+    public static Specification<Event> isAfter(LocalDateTime rangeStart) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart);
     }
 
-    public static Specification<Event> isBefore(LocalDateTime rangeEnd){
+    public static Specification<Event> isBefore(LocalDateTime rangeEnd) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd);
+    }
+
+    public static Specification<Event> isPaid(Boolean paid) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("paid"), paid);
+    }
+
+    public static Specification<Event> hasAnnotationLike(String text) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.like(criteriaBuilder.lower(root.get("annotation")), "%" + text.toLowerCase() + "%");
+    }
+
+    public static Specification<Event> hasDescriptionLike(String text) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + text.toLowerCase() + "%");
+    }
+
+    public static Specification<Event> hasParticipationLimit(Integer limit) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("participationLimit"), limit);
     }
 }

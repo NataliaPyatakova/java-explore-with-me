@@ -105,24 +105,19 @@ public class EventMapper {
     }
 
     //для EventService updateByInitiator
-    public static Event mapFromUpdateEventUserRequestToEvent(Event foundedEvent,
-                                                             UpdateEventUserRequest dto,
-                                                             ParamEventUpdate params) {
-
-        Event event = mapToEvent(foundedEvent, dto, params);
+    public static Event mapFromUpdateEventUserRequestToEvent(UpdateEventUserRequest dto, ParamEventUpdate params) {
+        Event event = mapToEvent(dto, params);
         if (UserEventStateAction.CANCEL_REVIEW.equals(dto.getStateAction())) {  //TODO ждем проверки через postman
             event.setState(EventState.CANCELED);
         } else {
-            event.setState(foundedEvent.getState());
+            event.setState(params.getEvent().getState());
         }
         return event;
     }
 
     //для EventService updateByAdmin
-    public static Event mapFromUpdateEventAdminRequestToEvent(Event foundedEvent,
-                                                              UpdateEventAdminRequest dto,
-                                                              ParamEventUpdate params) {
-        Event event = mapToEvent(foundedEvent, dto, params);
+    public static Event mapFromUpdateEventAdminRequestToEvent(UpdateEventAdminRequest dto, ParamEventUpdate params) {
+        Event event = mapToEvent(dto, params);
         if (AdminEventStateAction.PUBLISH_EVENT.equals(dto.getStateAction())) {
             event.setPublishedOn(LocalDateTime.now());
             event.setState(EventState.PUBLISHED);
@@ -131,60 +126,62 @@ public class EventMapper {
             event.setState(EventState.CANCELED);
         }
         if (dto.getStateAction() == null) {
-            event.setState(foundedEvent.getState());
+            event.setState(params.getEvent().getState());
         }
         return event;
     }
 
-    private static <T extends UpdateEventRequest> Event mapToEvent(Event foundedEvent, T dto, ParamEventUpdate params) {
+    private static <T extends UpdateEventRequest> Event mapToEvent(T dto, ParamEventUpdate params) {
         //Если поле в запросе не указано (равно null) - значит изменение этих данных не треубется.
         Event event = new Event();
-        event.setId(foundedEvent.getId());
-        event.setInitiator(foundedEvent.getInitiator());  //на всякий случай TODO проверить
+        event.setId(params.getEvent().getId());
+        //эти поля просто перекидываем чтобы не затерлись при апдейте
+        event.setInitiator(params.getEvent().getInitiator());
+        event.setCreatedOn(params.getEvent().getCreatedOn());
         if (dto.getTitle() != null) {
             event.setTitle(dto.getTitle());
         } else {
-            event.setTitle(foundedEvent.getTitle());
+            event.setTitle(params.getEvent().getTitle());
         }
         if (dto.getAnnotation() != null) {
             event.setAnnotation(dto.getAnnotation());
         } else {
-            event.setAnnotation(foundedEvent.getAnnotation());
+            event.setAnnotation(params.getEvent().getAnnotation());
         }
         if (dto.getDescription() != null) {
             event.setDescription(dto.getDescription());
         } else {
-            event.setDescription(foundedEvent.getDescription());
+            event.setDescription(params.getEvent().getDescription());
         }
         if (dto.getEventDate() != null) {
             event.setEventDate(dto.getEventDate());
         } else {
-            event.setEventDate(foundedEvent.getEventDate());
+            event.setEventDate(params.getEvent().getEventDate());
         }
         if (params.getCategory() != null) {
             event.setCategory(params.getCategory());
         } else {
-            event.setCategory(foundedEvent.getCategory());
+            event.setCategory(params.getEvent().getCategory());
         }
-        if (dto.getLocationDto() != null) {
-            event.setLocation(LocationMapper.mapToLocationFromLocationDto(dto.getLocationDto()));
+        if (params.getLocation() != null) {
+            event.setLocation(params.getLocation());
         } else {
-            event.setLocation(foundedEvent.getLocation());
+            event.setLocation(params.getEvent().getLocation());
         }
         if (dto.getPaid() != null) {
             event.setPaid(dto.getPaid());
         } else {
-            event.setPaid(foundedEvent.isPaid());
+            event.setPaid(params.getEvent().isPaid());
         }
         if (dto.getParticipantLimit() != null) {
             event.setParticipantLimit(dto.getParticipantLimit());
         } else {
-            event.setParticipantLimit(foundedEvent.getParticipantLimit());
+            event.setParticipantLimit(params.getEvent().getParticipantLimit());
         }
         if (dto.getRequestModeration() != null) {
             event.setRequestModeration(dto.getRequestModeration());
         } else {
-            event.setRequestModeration(foundedEvent.isRequestModeration());
+            event.setRequestModeration(params.getEvent().isRequestModeration());
         }
         return event;
     }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.dto.event.EventCountRequests;
 import ru.practicum.dto.event.EventRequestStatusUpdateRequest;
 import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
@@ -873,7 +874,7 @@ public class RequestServiceTest {
         ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
         //И еще один запрос
         ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event.getId());
-        //проставляем статус подтвержден первому
+        //проставляем статус отклонен всем
         List<Long> requestIds = new ArrayList<>();
         requestIds.add(requestDto.getId());
         requestIds.add(requestDto2.getId());
@@ -886,5 +887,113 @@ public class RequestServiceTest {
         Assertions.assertNotNull(result);
         Assertions.assertEquals(0, result.getConfirmedRequests().size());
         Assertions.assertEquals(3, result.getRejectedRequests().size());
+    }
+
+    @Test
+    @DisplayName("Расчет количества запросов с определенным статусом по списку событий")
+    public void testCountRequestsByEventId() {
+        em.persist(requester);
+        em.persist(requester2);
+        em.persist(requester3);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        em.persist(event);
+        //сохранили один нормальный запрос
+        ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
+        //а теперь еще один запрос
+        ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
+        //И еще один запрос
+        ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event.getId());
+        //проставляем статус подтвержден всем
+        List<Long> requestIds = new ArrayList<>();
+        requestIds.add(requestDto.getId());
+        requestIds.add(requestDto2.getId());
+        requestIds.add(requestDto3.getId());
+        EventRequestStatusUpdateRequest dto = new EventRequestStatusUpdateRequest()
+                .setRequestIds(requestIds)
+                .setStatus(RequestStatus.CONFIRMED);
+        requestService.updateRequestsStatus(dto, event);
+        List<Long> ids = new ArrayList<>();
+        ids.add(event.getId());
+        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(3, result.getFirst().getCount());
+    }
+
+    @Test
+    @DisplayName("Расчет количества запросов с определенным статусом по списку событий - два события")
+    public void testCountRequestsByEventIdTwoEvent() {
+        em.persist(requester);
+        em.persist(requester2);
+        em.persist(requester3);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        em.persist(event);
+        event2.setInitiator(initiator);
+        event2.setCategory(category);
+        event2.setLocation(location);
+        em.persist(event2);
+        //сохранили один нормальный запрос
+        ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
+        //а теперь еще один запрос
+        ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
+        //И еще один запрос
+        ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event2.getId());
+        //проставляем статус подтвержден всем
+        List<Long> requestIds = new ArrayList<>();
+        requestIds.add(requestDto.getId());
+        requestIds.add(requestDto2.getId());
+        EventRequestStatusUpdateRequest dto = new EventRequestStatusUpdateRequest()
+                .setRequestIds(requestIds)
+                .setStatus(RequestStatus.CONFIRMED);
+        requestService.updateRequestsStatus(dto, event);
+        List<Long> requestIds2 = new ArrayList<>();
+        requestIds2.add(requestDto3.getId());
+        EventRequestStatusUpdateRequest dto2 = new EventRequestStatusUpdateRequest()
+                .setRequestIds(requestIds2)
+                .setStatus(RequestStatus.CONFIRMED);
+        requestService.updateRequestsStatus(dto2, event2);
+        List<Long> ids = new ArrayList<>();
+        ids.add(event.getId());
+        ids.add(event2.getId());
+        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(2, result.size());
+        Assertions.assertEquals(2, result.getFirst().getCount());
+        Assertions.assertEquals(1, result.getLast().getCount());
+    }
+
+    @Test
+    @DisplayName("Расчет количества запросов с определенным статусом по списку событий - два события, нет запросов")
+    public void testCountRequestsByEventIdTwoEventNoRequests() {
+        em.persist(requester);
+        em.persist(requester2);
+        em.persist(requester3);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        em.persist(event);
+        event2.setInitiator(initiator);
+        event2.setCategory(category);
+        event2.setLocation(location);
+        em.persist(event2);
+        List<Long> ids = new ArrayList<>();
+        ids.add(event.getId());
+        ids.add(event2.getId());
+        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
     }
 }

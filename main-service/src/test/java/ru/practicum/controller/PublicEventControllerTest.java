@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.client.StatClient;
 import ru.practicum.dto.category.CategoryDto;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
@@ -35,6 +36,9 @@ public class PublicEventControllerTest {
 
     @MockBean
     private EventService eventService;
+
+    @MockBean
+    private StatClient statClient;
 
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final LocalDateTime date = LocalDateTime.now();

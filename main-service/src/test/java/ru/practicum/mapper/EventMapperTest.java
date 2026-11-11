@@ -25,6 +25,7 @@ public class EventMapperTest {
     private final Category category2 = new Category().setId(2L).setName("test_category2");
     private final LocalDateTime date = LocalDateTime.now();
     private final Location location = new Location().setLon(123.456).setLat(345.678);
+    private final Location location2 = new Location().setLon(456.789).setLat(45.78);
     private final LocationDto locationDto = new LocationDto().setLon(123.456).setLat(345.678);
     private final LocationDto locationDto2 = new LocationDto().setLon(456.789).setLat(45.78);
     private final NewEventDto newDto = new NewEventDto()
@@ -101,7 +102,7 @@ public class EventMapperTest {
             .setParticipantLimit(1)
             .setPaid(false)
             .setRequestModeration(false)
-            .setLocationDto(locationDto2);
+            .setLocation(locationDto2);
     private final UpdateEventAdminRequest updateEventAdminRequest = (UpdateEventAdminRequest) new UpdateEventAdminRequest()
             .setTitle("updateEventRequest")
             .setDescription("updateEventRequest_description")
@@ -111,9 +112,12 @@ public class EventMapperTest {
             .setParticipantLimit(1)
             .setPaid(false)
             .setRequestModeration(false)
-            .setLocationDto(locationDto2);
+            .setLocation(locationDto2);
 
-    private final ParamEventUpdate paramEventUpdate = new ParamEventUpdate().setCategory(category2);
+    private final ParamEventUpdate paramEventUpdate = new ParamEventUpdate()
+            .setCategory(category2)
+            .setEvent(foundedEvent)
+            .setLocation(location2);
 
     @Test
     @DisplayName("Тест маппера из NewEventDto в Event")
@@ -210,7 +214,7 @@ public class EventMapperTest {
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventUserRequest + отмена")
     void testMapFromUpdateEventUserRequestToEventCancel() {
         updateEventUserRequest.setStateAction(UserEventStateAction.CANCEL_REVIEW);
-        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(foundedEvent, updateEventUserRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(updateEventUserRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventUserRequest.getTitle(), result.getTitle());
@@ -222,15 +226,15 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventUserRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventUserRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventUserRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventUserRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventUserRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.CANCELED, result.getState());
     }
 
     @Test
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventUserRequest + без отмены")
     void testMapFromUpdateEventUserRequestToEventNoCancel() {
-        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(foundedEvent, updateEventUserRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(updateEventUserRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventUserRequest.getTitle(), result.getTitle());
@@ -242,13 +246,13 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventUserRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventUserRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventUserRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventUserRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventUserRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.PENDING, result.getState());
     }
 
     @Test
-    @DisplayName("Тест маппера для updateByInitiator в Event - ничего заполнено все в updateEventUserRequest + отмена")
+    @DisplayName("Тест маппера для updateByInitiator в Event - ничего заполнено в updateEventUserRequest + отмена")
     void testMapFromUpdateEventUserRequestToEventCancelNoData() {
         updateEventUserRequest.setStateAction(UserEventStateAction.CANCEL_REVIEW)
                 .setTitle(null)
@@ -259,8 +263,10 @@ public class EventMapperTest {
                 .setParticipantLimit(null)
                 .setPaid(null)
                 .setRequestModeration(null)
-                .setLocationDto(null);
-        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(foundedEvent, updateEventUserRequest, paramEventUpdate);
+                .setLocation(null);
+        paramEventUpdate.setCategory(null);
+        paramEventUpdate.setLocation(null);
+        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(updateEventUserRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(foundedEvent.getTitle(), result.getTitle());
@@ -271,7 +277,7 @@ public class EventMapperTest {
         Assertions.assertEquals(foundedEvent.isRequestModeration(), result.isRequestModeration());
         Assertions.assertEquals(foundedEvent.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
-        Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
+        Assertions.assertEquals(foundedEvent.getCategory(), result.getCategory());
         Assertions.assertEquals(foundedEvent.getLocation().getLat(), result.getLocation().getLat());
         Assertions.assertEquals(foundedEvent.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.CANCELED, result.getState());
@@ -281,7 +287,7 @@ public class EventMapperTest {
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventAdminRequest + публикация")
     void testMapFromUpdateEventAdminRequestToEventPublish() {
         updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
-        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateEventAdminRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateEventAdminRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
@@ -293,8 +299,8 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.PUBLISHED, result.getState());
         Assertions.assertNotNull(result.getPublishedOn());
     }
@@ -303,7 +309,7 @@ public class EventMapperTest {
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventAdminRequest + отклонение")
     void testMapFromUpdateEventAdminRequestToEventReject() {
         updateEventAdminRequest.setStateAction(AdminEventStateAction.REJECT_EVENT);
-        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateEventAdminRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateEventAdminRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
@@ -315,8 +321,8 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.CANCELED, result.getState());
     }
 
@@ -332,8 +338,10 @@ public class EventMapperTest {
                 .setParticipantLimit(null)
                 .setPaid(null)
                 .setRequestModeration(null)
-                .setLocationDto(null);
-        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateEventAdminRequest, paramEventUpdate);
+                .setLocation(null);
+        paramEventUpdate.setCategory(null);
+        paramEventUpdate.setLocation(null);
+        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateEventAdminRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(foundedEvent.getTitle(), result.getTitle());
@@ -344,7 +352,7 @@ public class EventMapperTest {
         Assertions.assertEquals(foundedEvent.isRequestModeration(), result.isRequestModeration());
         Assertions.assertEquals(foundedEvent.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
-        Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
+        Assertions.assertEquals(foundedEvent.getCategory(), result.getCategory());
         Assertions.assertEquals(foundedEvent.getLocation().getLat(), result.getLocation().getLat());
         Assertions.assertEquals(foundedEvent.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(EventState.CANCELED, result.getState());
@@ -353,7 +361,7 @@ public class EventMapperTest {
     @Test
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventAdminRequest + состояние не меняем")
     void testMapFromUpdateEventAdminRequestToEvent() {
-        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateEventAdminRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateEventAdminRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
@@ -365,8 +373,8 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(paramEventUpdate.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(foundedEvent.getState(), result.getState());
     }
 
@@ -374,7 +382,7 @@ public class EventMapperTest {
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventAdminRequest + нет категории")
     void testMapFromUpdateEventAdminRequestToEventNoCategory() {
         paramEventUpdate.setCategory(null);
-        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(foundedEvent, updateEventAdminRequest, paramEventUpdate);
+        Event result = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateEventAdminRequest, paramEventUpdate);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedEvent.getId(), result.getId());
         Assertions.assertEquals(updateEventAdminRequest.getTitle(), result.getTitle());
@@ -386,8 +394,8 @@ public class EventMapperTest {
         Assertions.assertEquals(updateEventAdminRequest.getParticipantLimit(), result.getParticipantLimit());
         Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
         Assertions.assertEquals(foundedEvent.getCategory(), result.getCategory());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLat(), result.getLocation().getLat());
-        Assertions.assertEquals(updateEventAdminRequest.getLocationDto().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(updateEventAdminRequest.getLocation().getLon(), result.getLocation().getLon());
         Assertions.assertEquals(foundedEvent.getState(), result.getState());
     }
 }

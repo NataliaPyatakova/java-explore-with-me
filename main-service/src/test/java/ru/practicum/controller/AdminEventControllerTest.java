@@ -72,7 +72,7 @@ public class AdminEventControllerTest {
             .setParticipantLimit(1)
             .setPaid(false)
             .setRequestModeration(false)
-            .setLocationDto(locationDto);
+            .setLocation(locationDto);
     private final List<EventFullDto> list = new ArrayList<>();
 
     @Test

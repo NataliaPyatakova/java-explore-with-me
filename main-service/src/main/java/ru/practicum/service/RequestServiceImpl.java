@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.dto.event.EventCountRequests;
 import ru.practicum.dto.event.EventRequestStatusUpdateRequest;
 import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
@@ -140,6 +141,11 @@ public class RequestServiceImpl implements RequestService {
             }
         });
         return result;
+    }
+
+    @Override
+    public List<EventCountRequests> countRequestsByEventId(List<Long> ids, RequestStatus status) {
+        return requestRepository.countRequestsByEventId(ids, status);
     }
 
     private Request findRequestById(Long id) {

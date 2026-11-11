@@ -1,10 +1,13 @@
 package ru.practicum.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.client.StatClient;
+import ru.practicum.dto.EndpointHit;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.ParamEventsFindByParam;
@@ -23,6 +26,7 @@ import java.util.List;
 public class PublicEventController {
 
     private final EventService eventService;
+    private final StatClient statClient;
 
     @GetMapping
     public List<EventShortDto> findPublishedEventsByParam(@RequestParam(value = "text", required = false) String text,
@@ -35,7 +39,8 @@ public class PublicEventController {
                                                           @RequestParam(value = "onlyAvailable", defaultValue = "false") Boolean onlyAvailable,
                                                           @RequestParam(value = "sort", required = false) String sort,
                                                           @RequestParam(value = "from", defaultValue = "0") Integer from,
-                                                          @RequestParam(value = "size", defaultValue = "10") Integer size) {
+                                                          @RequestParam(value = "size", defaultValue = "10") Integer size,
+                                                          HttpServletRequest request) {
         log.info("PublicEventController findPublishedEventsByParam text {}, categories {}, paid {}, rangeStart {}, " +
                         "rangeEnd {}, onlyAvailable {}, sort {}, from {}, size {}",
                 text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
@@ -52,15 +57,29 @@ public class PublicEventController {
             try {
                 params.setSort(Sort.valueOf(sort));
             } catch (IllegalArgumentException e) {
-                throw new BadRequestException("Bad request","Parameter sort could be EVENT_DATE or VIEWS");
+                throw new BadRequestException("Bad request", "Parameter sort could be EVENT_DATE or VIEWS");
             }
         }
-        return eventService.findPublishedEventsByParam(params);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        EndpointHit endpointHit = new EndpointHit()
+                .setApp("ExplorerWithMeApplication")
+                .setUri(request.getRequestURI())
+                .setIp(request.getRemoteAddr())
+                .setTimestamp(LocalDateTime.now());
+        statClient.hit(endpointHit);
+        return result;
     }
 
     @GetMapping("/{id}")
-    public EventFullDto findPublishedEventById(@PathVariable Long id) {
+    public EventFullDto findPublishedEventById(@PathVariable Long id, HttpServletRequest request) {
         log.info("PublicEventController findPublishedEventById id {}", id);
-        return eventService.findPublishedEventById(id);
+        EventFullDto result = eventService.findPublishedEventById(id);
+        EndpointHit endpointHit = new EndpointHit()
+                .setApp("ExplorerWithMeApplication")
+                .setUri(request.getRequestURI())
+                .setIp(request.getRemoteAddr())
+                .setTimestamp(LocalDateTime.now());
+        statClient.hit(endpointHit);
+        return result;
     }
 }

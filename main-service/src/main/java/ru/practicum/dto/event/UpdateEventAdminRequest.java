@@ -31,7 +31,7 @@ public class UpdateEventAdminRequest extends UpdateEventRequest {
                 && super.getDescription().equals(that.getDescription())
                 && super.getAnnotation().equals(that.getAnnotation())
                 && super.getCategory().equals(that.getCategory())
-                && super.getLocationDto().equals(that.getLocationDto())
+                && super.getLocation().equals(that.getLocation())
                 && super.getPaid().equals(that.getPaid())
                 && super.getParticipantLimit().equals(that.getParticipantLimit())
                 && super.getRequestModeration().equals(that.getRequestModeration())

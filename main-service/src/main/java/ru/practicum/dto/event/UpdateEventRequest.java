@@ -23,7 +23,7 @@ public class UpdateEventRequest {
     private Long category;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
-    private LocationDto locationDto;
+    private LocationDto location;
     private Boolean paid;
     private Integer participantLimit;
     private Boolean requestModeration;
@@ -35,7 +35,7 @@ public class UpdateEventRequest {
                 ", description='" + description + '\'' +
                 ", category=" + category +
                 ", eventDate=" + eventDate +
-                ", locationDto=" + locationDto +
+                ", locationDto=" + location +
                 ", paid=" + paid +
                 ", participantLimit=" + participantLimit +
                 ", requestModeration=" + requestModeration;

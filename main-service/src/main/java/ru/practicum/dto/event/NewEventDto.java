@@ -48,4 +48,9 @@ public class NewEventDto {
                 && Objects.equals(participantLimit, that.participantLimit)
                 && Objects.equals(requestModeration, that.requestModeration);
     }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(title, annotation, description, category, location, paid, participantLimit, requestModeration);
+    }
 }
