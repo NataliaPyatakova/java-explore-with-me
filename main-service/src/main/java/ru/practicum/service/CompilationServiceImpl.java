@@ -22,10 +22,8 @@ import ru.practicum.model.Event;
 import ru.practicum.repository.CompilationRepository;
 import ru.practicum.repository.CompilationSpecification;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -76,26 +74,37 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public List<CompilationDto> findAll(ParamCompilationFindAll params) {
         log.info("findAll compilation params {}", params);
+        List<CompilationDto> result = new ArrayList<>();
         //в требованиях не нашла - сортируем по Id чтобы не кучей
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
         Pageable pageable = PageRequest.of(params.getFrom(), params.getSize(), sortById);
         Specification<Compilation> spec = Specification.where(null);
         if (params.getPinned() != null) spec = spec.and(CompilationSpecification.isPinned(params.getPinned()));
         List<Compilation> compilationList = compilationRepository.findAll(spec, pageable).getContent();
-        //собираем все Id event
-        List<Long> ids = new ArrayList<>();
-        compilationList.forEach(compilation ->
-                compilation.getEvents().forEach(event -> ids.add(event.getId())));
-        //запускаем по ним доначитку данных про просмотры и статистику
-        Map<Long, ParamEventDto> mapParams = eventService.calcStatistic(ids);
-        //мапим
-        Map<Long, List<EventShortDto>> mapEvents = new HashMap<>();
-        compilationList.forEach(compilation ->
-                mapEvents.computeIfAbsent(compilation.getId(),
-                        k -> compilation.getEvents().stream().map(event ->
-                                EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList()));
-        return compilationList.stream().map(comp ->
-                CompilationMapper.mapToCompilationDtoFromCompilation(comp, mapEvents.get(comp.getId()))).toList();
+        if (!compilationList.isEmpty()) {
+            //собираем все Id event
+            List<Long> ids = new ArrayList<>();
+            List<LocalDateTime> dateEvents = new ArrayList<>();
+            compilationList.forEach(compilation ->
+                    compilation.getEvents().forEach(event -> {
+                        ids.add(event.getId()); //заберем все id
+                        dateEvents.add(event.getCreatedOn());  //заберем все даты создания
+                    }));
+            Map<Long, List<EventShortDto>> mapEvents = new HashMap<>();
+            if (!ids.isEmpty()) { //только если события есть
+                //запускаем по ним доначитку данных про просмотры и статистику
+                LocalDateTime start = dateEvents.stream().filter(Objects::nonNull).min(Comparator.naturalOrder()).orElse(LocalDateTime.now());
+                Map<Long, ParamEventDto> mapParams = eventService.calcViewsAndRequests(ids, start);
+                //мапим
+                compilationList.forEach(compilation ->
+                        mapEvents.computeIfAbsent(compilation.getId(),
+                                k -> compilation.getEvents().stream().map(event ->
+                                        EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList()));
+            }
+            result = compilationList.stream().map(comp ->
+                    CompilationMapper.mapToCompilationDtoFromCompilation(comp, mapEvents.get(comp.getId()))).toList();
+        }
+        return result;
     }
 
     private Compilation findCompilationById(Long id) {

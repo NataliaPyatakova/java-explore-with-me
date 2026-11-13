@@ -18,7 +18,7 @@ public class ParamEventsFindByParam {
     private Boolean paid;
     private LocalDateTime rangeStart;
     private LocalDateTime rangeEnd;
-    private Boolean onlyAvailable;
+    private boolean onlyAvailable;
     private Sort sort;
     private Integer from;
     private Integer size;

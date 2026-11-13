@@ -3,6 +3,7 @@ package ru.practicum.service;
 import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +33,6 @@ public interface EventService {
 
     EventRequestStatusUpdateResult updateRequestsStatus(EventRequestStatusUpdateRequest dto, Long eventId, Long userId);
 
-    Map<Long, ParamEventDto> calcStatistic(List<Long> ids);
+    Map<Long, ParamEventDto> calcViewsAndRequests(List<Long> ids, LocalDateTime start);
 
 }

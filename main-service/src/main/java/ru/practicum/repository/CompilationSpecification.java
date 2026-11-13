@@ -7,7 +7,7 @@ import ru.practicum.model.Compilation;
 @Component
 public class CompilationSpecification {
 
-    public static Specification<Compilation> isPinned(Boolean pinned){
+    public static Specification<Compilation> isPinned(Boolean pinned) {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("pinned"), pinned);
     }

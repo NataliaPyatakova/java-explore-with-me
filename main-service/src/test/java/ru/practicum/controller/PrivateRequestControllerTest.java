@@ -51,7 +51,8 @@ public class PrivateRequestControllerTest {
     void testSaveOk() throws Exception {
         when(requestService.save(participationRequestDto.getRequester(), participationRequestDto.getEvent()))
                 .thenReturn(participationRequestDto);
-        mockMvc.perform(post("/private/users/1/requests/1"))
+        mockMvc.perform(post("/users/1/requests")
+                        .param("eventId", "1"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", is(participationRequestDto.getId()), Long.class))
                 .andExpect(jsonPath("$.event", is(participationRequestDto.getEvent()), Long.class))
@@ -61,11 +62,18 @@ public class PrivateRequestControllerTest {
     }
 
     @Test
+    @DisplayName("Post request - без события")
+    void testSaveWithoutEventId() throws Exception {
+        mockMvc.perform(post("/users/1/requests"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Patch request - все хорошо")
     void testUpdateOk() throws Exception {
         when(requestService.update(participationRequestDto.getRequester(), participationRequestDto.getId()))
                 .thenReturn(canceledParticipationRequestDto);
-        mockMvc.perform(patch("/private/users/1/requests/1/cancel"))
+        mockMvc.perform(patch("/users/1/requests/1/cancel"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(canceledParticipationRequestDto.getId()), Long.class))
                 .andExpect(jsonPath("$.event", is(canceledParticipationRequestDto.getEvent()), Long.class))
@@ -79,7 +87,7 @@ public class PrivateRequestControllerTest {
     void testFindByUserIdAllOk() throws Exception {
         list.add(participationRequestDto);
         when(requestService.findByUserId(participationRequestDto.getRequester())).thenReturn(list);
-        mockMvc.perform(get("/private/users/1/requests"))
+        mockMvc.perform(get("/users/1/requests"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].id", is(participationRequestDto.getId()), Long.class))
                 .andExpect(jsonPath("$.[0].event", is(participationRequestDto.getEvent()), Long.class))
@@ -91,7 +99,7 @@ public class PrivateRequestControllerTest {
     @Test
     @DisplayName("Get request - некорректный параметр")
     void testFindByUserIdError400() throws Exception {
-        mockMvc.perform(get("/private/users/a/requests"))
+        mockMvc.perform(get("/users/a/requests"))
                 .andExpect(status().isBadRequest());
     }
 }

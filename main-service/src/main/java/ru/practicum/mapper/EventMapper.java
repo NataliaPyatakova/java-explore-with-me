@@ -107,9 +107,13 @@ public class EventMapper {
     //для EventService updateByInitiator
     public static Event mapFromUpdateEventUserRequestToEvent(UpdateEventUserRequest dto, ParamEventUpdate params) {
         Event event = mapToEvent(dto, params);
-        if (UserEventStateAction.CANCEL_REVIEW.equals(dto.getStateAction())) {  //TODO ждем проверки через postman
+        if (UserEventStateAction.CANCEL_REVIEW.equals(dto.getStateAction())) {
             event.setState(EventState.CANCELED);
-        } else {
+        }
+        if (UserEventStateAction.SEND_TO_REVIEW.equals(dto.getStateAction())) {
+            event.setState(EventState.PENDING);
+        }
+        if (dto.getStateAction() == null) {
             event.setState(params.getEvent().getState());
         }
         return event;

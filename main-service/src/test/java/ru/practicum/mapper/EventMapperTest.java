@@ -284,6 +284,38 @@ public class EventMapperTest {
     }
 
     @Test
+    @DisplayName("Тест маппера для updateByInitiator в Event - ничего заполнено в updateEventUserRequest + отправить на публикацию")
+    void testMapFromUpdateEventUserRequestToEventSendNoData() {
+        updateEventUserRequest.setStateAction(UserEventStateAction.SEND_TO_REVIEW)
+                .setTitle(null)
+                .setDescription(null)
+                .setAnnotation(null)
+                .setEventDate(null)
+                .setCategory(null)
+                .setParticipantLimit(null)
+                .setPaid(null)
+                .setRequestModeration(null)
+                .setLocation(null);
+        paramEventUpdate.setCategory(null);
+        paramEventUpdate.setLocation(null);
+        Event result = EventMapper.mapFromUpdateEventUserRequestToEvent(updateEventUserRequest, paramEventUpdate);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(foundedEvent.getId(), result.getId());
+        Assertions.assertEquals(foundedEvent.getTitle(), result.getTitle());
+        Assertions.assertEquals(foundedEvent.getAnnotation(), result.getAnnotation());
+        Assertions.assertEquals(foundedEvent.getDescription(), result.getDescription());
+        Assertions.assertEquals(foundedEvent.getEventDate(), result.getEventDate());
+        Assertions.assertEquals(foundedEvent.isPaid(), result.isPaid());
+        Assertions.assertEquals(foundedEvent.isRequestModeration(), result.isRequestModeration());
+        Assertions.assertEquals(foundedEvent.getParticipantLimit(), result.getParticipantLimit());
+        Assertions.assertEquals(foundedEvent.getInitiator().getId(), result.getInitiator().getId());
+        Assertions.assertEquals(foundedEvent.getCategory(), result.getCategory());
+        Assertions.assertEquals(foundedEvent.getLocation().getLat(), result.getLocation().getLat());
+        Assertions.assertEquals(foundedEvent.getLocation().getLon(), result.getLocation().getLon());
+        Assertions.assertEquals(EventState.PENDING, result.getState());
+    }
+
+    @Test
     @DisplayName("Тест маппера для updateByInitiator в Event - заполнено все в updateEventAdminRequest + публикация")
     void testMapFromUpdateEventAdminRequestToEventPublish() {
         updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);

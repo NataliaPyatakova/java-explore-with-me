@@ -14,7 +14,6 @@ import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.enumeration.RequestStatus;
-import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.model.Category;
@@ -74,8 +73,8 @@ public class RequestServiceTest {
 
 
     @Test
-    @DisplayName("Сохранение request - все хорошо")
-    public void testSave() {
+    @DisplayName("Сохранение request - все хорошо - событие без лимита")
+    public void testSaveNOLimit() {
         em.persist(requester);
         em.persist(initiator);
         em.persist(category);
@@ -88,7 +87,49 @@ public class RequestServiceTest {
         Assertions.assertNotNull(result);
         Assertions.assertEquals(requester.getId(), result.getRequester());
         Assertions.assertEquals(event.getId(), result.getEvent());
+        Assertions.assertEquals(RequestStatus.CONFIRMED, result.getStatus());
+        Assertions.assertNotNull(result.getCreated());
+    }
+
+    @Test
+    @DisplayName("Сохранение request - все хорошо - событие с лимитом и модерацией")
+    public void testSaveWithLimitAndModer() {
+        em.persist(requester);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        event.setRequestModeration(true);
+        event.setParticipantLimit(2);
+        em.persist(event);
+        ParticipationRequestDto result = requestService.save(requester.getId(), event.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(requester.getId(), result.getRequester());
+        Assertions.assertEquals(event.getId(), result.getEvent());
         Assertions.assertEquals(RequestStatus.PENDING, result.getStatus());
+        Assertions.assertNotNull(result.getCreated());
+    }
+
+    @Test
+    @DisplayName("Сохранение request - все хорошо - событие с лимитом и без модерации")
+    public void testSaveWithLimitNoModer() {
+        em.persist(requester);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        event.setRequestModeration(false);
+        event.setParticipantLimit(2);
+        em.persist(event);
+        ParticipationRequestDto result = requestService.save(requester.getId(), event.getId());
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(requester.getId(), result.getRequester());
+        Assertions.assertEquals(event.getId(), result.getEvent());
+        Assertions.assertEquals(RequestStatus.CONFIRMED, result.getStatus());
         Assertions.assertNotNull(result.getCreated());
     }
 
@@ -414,6 +455,7 @@ public class RequestServiceTest {
         event.setInitiator(initiator);
         event.setCategory(category);
         event.setLocation(location);
+        event.setParticipantLimit(2); //чтобы запрос упал в состояние PENDING
         em.persist(event);
         //сохранили один нормальный запрос
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
@@ -479,6 +521,7 @@ public class RequestServiceTest {
         event.setInitiator(initiator);
         event.setCategory(category);
         event.setLocation(location);
+        event.setParticipantLimit(2); //чтобы запрос упал в состояние PENDING
         em.persist(event);
         //сохранили один нормальный запрос
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
@@ -497,7 +540,7 @@ public class RequestServiceTest {
         dto.setStatus(RequestStatus.REJECTED);
         try {
             requestService.updateRequestsStatus(dto, event);
-        } catch (BadRequestException e) {
+        } catch (ValidationException e) {
             Assertions.assertEquals("Request must have status PENDING", e.getMessage());
             Assertions.assertEquals("Incorrectly made request.", e.getReason());
             //проверим сам статус - он не должен был измениться
@@ -519,6 +562,7 @@ public class RequestServiceTest {
         event.setInitiator(initiator);
         event.setCategory(category);
         event.setLocation(location);
+        event.setParticipantLimit(2); //чтобы поасть в состояние PENDING
         em.persist(event);
         //сохранили запросы
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
@@ -539,7 +583,7 @@ public class RequestServiceTest {
         dto.setStatus(RequestStatus.REJECTED);
         try {
             requestService.updateRequestsStatus(dto, event);
-        } catch (BadRequestException e) {
+        } catch (ValidationException e) {
             Assertions.assertEquals("Request must have status PENDING", e.getMessage());
             Assertions.assertEquals("Incorrectly made request.", e.getReason());
             //проверим сам статус - он не должен был измениться
@@ -563,10 +607,12 @@ public class RequestServiceTest {
         event.setInitiator(initiator);
         event.setCategory(category);
         event.setLocation(location);
+        event.setParticipantLimit(2); //чтобы запрос попал в состояние PENDING
         em.persist(event);
         event2.setInitiator(initiator);
         event2.setCategory(category);
         event2.setLocation(location);
+        event2.setParticipantLimit(2); //чтобы запрос попал в состояние PENDING
         em.persist(event2);
         //сохранили запросы
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
@@ -580,7 +626,7 @@ public class RequestServiceTest {
                 .setStatus(RequestStatus.CONFIRMED);
         try {
             requestService.updateRequestsStatus(dto, event);
-        } catch (BadRequestException e) {
+        } catch (ValidationException e) {
             Assertions.assertEquals("Requests must belong to current Event", e.getMessage());
             Assertions.assertEquals("Incorrectly made request.", e.getReason());
             //проверим сам статус - он не должен был измениться
@@ -891,7 +937,7 @@ public class RequestServiceTest {
 
     @Test
     @DisplayName("Расчет количества запросов с определенным статусом по списку событий")
-    public void testCountRequestsByEventId() {
+    public void testCountConfirmedRequestsByListEventId() {
         em.persist(requester);
         em.persist(requester2);
         em.persist(requester3);
@@ -903,23 +949,15 @@ public class RequestServiceTest {
         event.setLocation(location);
         em.persist(event);
         //сохранили один нормальный запрос
-        ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
+        requestService.save(requester.getId(), event.getId());
         //а теперь еще один запрос
-        ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
+        requestService.save(requester2.getId(), event.getId());
         //И еще один запрос
-        ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event.getId());
+        requestService.save(requester3.getId(), event.getId());
         //проставляем статус подтвержден всем
-        List<Long> requestIds = new ArrayList<>();
-        requestIds.add(requestDto.getId());
-        requestIds.add(requestDto2.getId());
-        requestIds.add(requestDto3.getId());
-        EventRequestStatusUpdateRequest dto = new EventRequestStatusUpdateRequest()
-                .setRequestIds(requestIds)
-                .setStatus(RequestStatus.CONFIRMED);
-        requestService.updateRequestsStatus(dto, event);
         List<Long> ids = new ArrayList<>();
         ids.add(event.getId());
-        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        List<EventCountRequests> result = requestService.countConfirmedRequestsByListEventId(ids);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(1, result.size());
         Assertions.assertEquals(3, result.getFirst().getCount());
@@ -927,7 +965,7 @@ public class RequestServiceTest {
 
     @Test
     @DisplayName("Расчет количества запросов с определенным статусом по списку событий - два события")
-    public void testCountRequestsByEventIdTwoEvent() {
+    public void testCountConfirmedRequestsByListEventIdTwoEvent() {
         em.persist(requester);
         em.persist(requester2);
         em.persist(requester3);
@@ -943,29 +981,15 @@ public class RequestServiceTest {
         event2.setLocation(location);
         em.persist(event2);
         //сохранили один нормальный запрос
-        ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
+        requestService.save(requester.getId(), event.getId());
         //а теперь еще один запрос
-        ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
+        requestService.save(requester2.getId(), event.getId());
         //И еще один запрос
-        ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event2.getId());
-        //проставляем статус подтвержден всем
-        List<Long> requestIds = new ArrayList<>();
-        requestIds.add(requestDto.getId());
-        requestIds.add(requestDto2.getId());
-        EventRequestStatusUpdateRequest dto = new EventRequestStatusUpdateRequest()
-                .setRequestIds(requestIds)
-                .setStatus(RequestStatus.CONFIRMED);
-        requestService.updateRequestsStatus(dto, event);
-        List<Long> requestIds2 = new ArrayList<>();
-        requestIds2.add(requestDto3.getId());
-        EventRequestStatusUpdateRequest dto2 = new EventRequestStatusUpdateRequest()
-                .setRequestIds(requestIds2)
-                .setStatus(RequestStatus.CONFIRMED);
-        requestService.updateRequestsStatus(dto2, event2);
+        requestService.save(requester3.getId(), event2.getId());
         List<Long> ids = new ArrayList<>();
         ids.add(event.getId());
         ids.add(event2.getId());
-        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        List<EventCountRequests> result = requestService.countConfirmedRequestsByListEventId(ids);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(2, result.size());
         Assertions.assertEquals(2, result.getFirst().getCount());
@@ -974,7 +998,7 @@ public class RequestServiceTest {
 
     @Test
     @DisplayName("Расчет количества запросов с определенным статусом по списку событий - два события, нет запросов")
-    public void testCountRequestsByEventIdTwoEventNoRequests() {
+    public void testCountConfirmedRequestsByListEventIdTwoEventNoRequests() {
         em.persist(requester);
         em.persist(requester2);
         em.persist(requester3);
@@ -992,7 +1016,7 @@ public class RequestServiceTest {
         List<Long> ids = new ArrayList<>();
         ids.add(event.getId());
         ids.add(event2.getId());
-        List<EventCountRequests> result = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        List<EventCountRequests> result = requestService.countConfirmedRequestsByListEventId(ids);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(0, result.size());
     }

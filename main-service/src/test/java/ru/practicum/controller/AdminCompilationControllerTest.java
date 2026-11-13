@@ -9,9 +9,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.dto.compilation.CompilationDto;
-import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.compilation.NewCompilationDto;
 import ru.practicum.dto.compilation.UpdateCompilationRequest;
+import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.service.CompilationService;
 
 import java.util.ArrayList;

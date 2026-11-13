@@ -12,7 +12,7 @@ import ru.practicum.service.RequestService;
 import java.util.List;
 
 @RestController
-@RequestMapping(path = "/private/users")
+@RequestMapping(path = "/users")
 @Slf4j
 @RequiredArgsConstructor
 @Validated
@@ -20,10 +20,10 @@ public class PrivateRequestController {
 
     private final RequestService requestService;
 
-    @PostMapping("/{userId}/requests/{eventId}")
+    @PostMapping("/{userId}/requests")
     @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto save(@PathVariable @NotNull Long userId,
-                                        @PathVariable @NotNull Long eventId) {
+                                        @RequestParam(value = "eventId") @NotNull Long eventId) {
         log.info("PrivateRequestController save request userId {} eventId {}", userId, eventId);
         return requestService.save(userId, eventId);
     }

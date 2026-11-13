@@ -14,7 +14,7 @@ import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.enumeration.AdminEventStateAction;
 import ru.practicum.enumeration.EventState;
-import ru.practicum.enumeration.RequestStatus;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.CategoryMapper;
@@ -49,11 +49,12 @@ public class EventServiceImpl implements EventService {
     private final StatClient statClient;
 
     @Override
+    @Transactional
     public EventFullDto save(NewEventDto newEventDto, Long userId) {
         log.info("save event newEventDto {}", newEventDto);
         //дата и время на которые намечено событие не может быть раньше, чем через два часа от текущего момента
         if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidationException("For the requested operation the conditions are not met.",
+            throw new BadRequestException("For the requested operation the conditions are not met.",
                     "Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
                             + newEventDto.getEventDate().format(dtf));
         }
@@ -68,6 +69,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     public EventFullDto updateByInitiator(UpdateEventUserRequest updateDto, Long eventId, Long userId) {
         log.info("updateByInitiator event updateDto {} eventId {} userId {}", updateDto, eventId, userId);
         ParamEventUpdate params = getParamEventUpdate(updateDto, eventId, userId);
@@ -80,7 +82,7 @@ public class EventServiceImpl implements EventService {
         //дата и время на которые намечено событие не может быть раньше, чем через два часа от текущего момента
         if (updateDto.getEventDate() != null) {
             if (updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-                throw new ValidationException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
+                throw new BadRequestException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
                         + updateDto.getEventDate().format(dtf),
                         "For the requested operation the conditions are not met.");
             }
@@ -90,21 +92,24 @@ public class EventServiceImpl implements EventService {
             throw new ValidationException("Current user isn't an initiator of current event",
                     "For the requested operation the conditions are not met.");
         }
+        //непонятно нужны ли просмотры и кол-во запросов при ответе на апдейт - пока отдаем
         List<Long> ids = new ArrayList<>();
         ids.add(eventId);
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        LocalDateTime start = params.getEvent().getCreatedOn(); //читаем статистику просмотров с момента создания события
+        Map<Long, ParamEventDto> mapParams = calcViewsAndRequests(ids, start);
         Event event = EventMapper.mapFromUpdateEventUserRequestToEvent(updateDto, params);
         return EventMapper.mapFromEventToEventFullDto(eventRepository.save(event), mapParams.get(eventId));
     }
 
     @Override
+    @Transactional
     public EventFullDto updateByAdmin(UpdateEventAdminRequest updateDto, Long eventId) {
         log.info("updateByAdmin event updateDto {} eventId {}", updateDto, eventId);
         ParamEventUpdate params = getParamEventUpdate(updateDto, eventId, null);
         // дата начала изменяемого события должна быть не ранее чем за час от даты публикации. (Ожидается код ошибки 409)
         if (updateDto.getEventDate() != null) {
             if (updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-                throw new ValidationException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
+                throw new BadRequestException("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
                         + updateDto.getEventDate().format(dtf),
                         "For the requested operation the conditions are not met.");
             }
@@ -123,9 +128,11 @@ public class EventServiceImpl implements EventService {
                     + params.getEvent().getState(),
                     "For the requested operation the conditions are not met.");
         }
+        //непонятно нужны ли просмотры и кол-во запросов при ответе на апдейт - пока отдаем
         List<Long> ids = new ArrayList<>();
         ids.add(eventId);
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        LocalDateTime start = params.getEvent().getCreatedOn(); //читаем статистику просмотров с момента создания события
+        Map<Long, ParamEventDto> mapParams = calcViewsAndRequests(ids, start);
         Event event = EventMapper.mapFromUpdateEventAdminRequestToEvent(updateDto, params);
         return EventMapper.mapFromEventToEventFullDto(eventRepository.save(event), mapParams.get(eventId));
     }
@@ -143,10 +150,11 @@ public class EventServiceImpl implements EventService {
     public EventFullDto findById(Long id) {
         log.info("findById event id {}", id);
         Event event = findEventById(id);
+        //непонятно нужна ли статистика в Private controller - пока отдаем
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        //TODO непонятно нужна ли статистика в Private controller
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        LocalDateTime start = event.getCreatedOn(); //читаем статистику просмотров с момента создания события
+        Map<Long, ParamEventDto> mapParams = calcViewsAndRequests(ids, start);
         return EventMapper.mapFromEventToEventFullDto(event, mapParams.get(id));
     }
 
@@ -161,9 +169,17 @@ public class EventServiceImpl implements EventService {
         Specification<Event> spec = Specification.where(null);
         spec = spec.and(EventSpecification.hasInitiatorId(params.getUserId()));
         List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
-        //TODO непонятно нужна ли статистика в Private controller
-        List<Long> ids = listEvents.stream().map(Event::getId).toList();
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        Map<Long, ParamEventDto> mapParams;
+        if (!listEvents.isEmpty()) {
+            //непонятно нужна ли статистика в Private controller - пока отдаем
+            List<Long> ids = listEvents.stream().map(Event::getId).toList();
+            //читаем статистику просмотров с момента самого раннего создания события
+            LocalDateTime start = listEvents.stream().map(Event::getCreatedOn).min(Comparator.naturalOrder())
+                    .orElse(LocalDateTime.now());
+            mapParams = calcViewsAndRequests(ids, start);
+        } else {
+            mapParams = Collections.emptyMap();
+        }
         return listEvents.stream().map(event ->
                 EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList();
     }
@@ -181,9 +197,17 @@ public class EventServiceImpl implements EventService {
         if (params.getRangeStart() != null) spec = spec.and(EventSpecification.isAfter(params.getRangeStart()));
         if (params.getRangeEnd() != null) spec = spec.and(EventSpecification.isBefore(params.getRangeEnd()));
         List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
-        //TODO непонятно нужна ли статистика в admin controller
-        List<Long> ids = listEvents.stream().map(Event::getId).toList();
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        Map<Long, ParamEventDto> mapParams;
+        if (!listEvents.isEmpty()) {
+            //непонятно нужна ли статистика в admin controller - пока отдаем
+            List<Long> ids = listEvents.stream().map(Event::getId).toList();
+            //читаем статистику просмотров с момента самого раннего создания события
+            LocalDateTime start = listEvents.stream().map(Event::getCreatedOn).min(Comparator.naturalOrder())
+                    .orElse(LocalDateTime.now());
+            mapParams = calcViewsAndRequests(ids, start);
+        } else {
+            mapParams = new HashMap<>();
+        }
         return listEvents.stream().map(event ->
                 EventMapper.mapFromEventToEventFullDto(event, mapParams.get(event.getId()))).toList();
     }
@@ -195,10 +219,11 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findEventByIdAndState(id, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + id + " was not found",
                         "The required object was not found."));
+        //информация о событии должна включать в себя количество просмотров и количество подтвержденных запросов
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        //информация о событии должна включать в себя количество просмотров и количество подтвержденных запросов
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        LocalDateTime start = event.getCreatedOn(); //читаем статистику просмотров с момента создания события
+        Map<Long, ParamEventDto> mapParams = calcViewsAndRequests(ids, start);
         //информацию о том, что по этому эндпоинту был осуществлен и обработан запрос, нужно сохранить в сервисе статистики
         return EventMapper.mapFromEventToEventFullDto(event, mapParams.get(id));
     }
@@ -212,9 +237,7 @@ public class EventServiceImpl implements EventService {
         //в выдаче должны быть только опубликованные события
         spec = spec.and(EventSpecification.hasState(EventState.PUBLISHED));
         if (params.getText() != null && !params.getText().isEmpty()) {
-            //TODO проверить в юнит тестах
-            spec = spec.and(EventSpecification.hasAnnotationLike(params.getText()));
-            spec = spec.and(EventSpecification.hasDescriptionLike(params.getText()));
+            spec = spec.and(EventSpecification.hasTextFieldsLike(params.getText()));
         }
         if (params.getCategories() != null)
             spec = spec.and(EventSpecification.hasCategoryIdInList(params.getCategories()));
@@ -225,12 +248,20 @@ public class EventServiceImpl implements EventService {
         }
         if (params.getRangeStart() != null) spec = spec.and(EventSpecification.isAfter(params.getRangeStart()));
         if (params.getRangeEnd() != null) spec = spec.and(EventSpecification.isBefore(params.getRangeEnd()));
-        //TODO посмотреть в постмане
-        if (params.getOnlyAvailable() != null) spec = spec.and(EventSpecification.hasParticipationLimit(0));
+        if (params.isOnlyAvailable()) spec = spec.and(EventSpecification.hasParticipantLimit(0));
         List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
-        //информация о каждом событии должна включать в себя количество просмотров и количество уже одобренных заявок на участие
-        List<Long> ids = listEvents.stream().map(Event::getId).toList();
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        Map<Long, ParamEventDto> mapParams;
+        if (!listEvents.isEmpty()) {
+            //информация о каждом событии должна включать в себя количество просмотров
+            // и количество уже одобренных заявок на участие
+            List<Long> ids = listEvents.stream().map(Event::getId).toList();
+            //читаем статистику просмотров с момента самого раннего создания события
+            LocalDateTime start = listEvents.stream().map(Event::getCreatedOn).min(Comparator.naturalOrder())
+                    .orElse(LocalDateTime.now());
+            mapParams = calcViewsAndRequests(ids, start);
+        } else {
+            mapParams = new HashMap<>();
+        }
         List<EventShortDto> listEventsShort = listEvents.stream().map(event ->
                 EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList();
         //сортировка
@@ -260,6 +291,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     public EventRequestStatusUpdateResult updateRequestsStatus(EventRequestStatusUpdateRequest dto,
                                                                Long eventId,
                                                                Long userId) {
@@ -270,8 +302,6 @@ public class EventServiceImpl implements EventService {
             throw new ValidationException("Current user isn't an initiator of current event",
                     "For the requested operation the conditions are not met.");
         }
-        //если для события лимит заявок равен 0 или отключена пре-модерация заявок, то подтверждение заявок не требуется
-        //TODO посмотреть в постмане
         return requestService.updateRequestsStatus(dto, event);
     }
 
@@ -280,29 +310,34 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> findAllByIdIn(List<Long> ids) {
         log.info("findAllByIdIn event ids {}", ids);
         List<Event> events = eventRepository.findAllById(ids);
-        //TODO непонятно нужна ли статистика в CompilationService
-        Map<Long, ParamEventDto> mapParams = calcStatistic(ids);
+        Map<Long, ParamEventDto> mapParams;
+        if (!events.isEmpty()) {
+            //непонятно нужна ли статистика в CompilationService - пока отдаем
+            //читаем статистику просмотров с момента самого раннего создания события
+            LocalDateTime start = events.stream().map(Event::getCreatedOn).min(Comparator.naturalOrder()).orElse(LocalDateTime.now());
+            mapParams = calcViewsAndRequests(ids, start);
+        } else {
+            mapParams = new HashMap<>();
+        }
         return events.stream().map(event ->
                 EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList();
     }
 
     @Override
-    public Map<Long, ParamEventDto> calcStatistic(List<Long> ids) {
-        log.info("calcStatistic ids {}", ids);
+    public Map<Long, ParamEventDto> calcViewsAndRequests(List<Long> ids, LocalDateTime start) {
+        log.info("calcViewsAndRequests ids {}", ids);
         Map<Long, ParamEventDto> mapParams = new HashMap<>();
         ids.forEach(id -> mapParams.putIfAbsent(id, new ParamEventDto(0L, 0L)));
         //confirmed Requests
-        List<EventCountRequests> listCountRequest = requestService.countRequestsByEventId(ids, RequestStatus.CONFIRMED);
+        List<EventCountRequests> listCountRequest = requestService.countConfirmedRequestsByListEventId(ids);
         listCountRequest.forEach(count ->
                 mapParams.replace(count.getId(), new ParamEventDto(count.getCount(), 0L)));
         //views
-        //TODO непонятно что отдавать в даты непонятно что хотят в ответ - как распределять просмотры
         Map<String, Long> mapURI = new HashMap<>();
-        ids.forEach(id -> mapURI.putIfAbsent("GET /events/" + id, id));
-        List<String> uris = ids.stream().map(id -> "GET /events/" + id).toList();
-        LocalDateTime start = LocalDateTime.now().minusDays(1);
-        LocalDateTime end = LocalDateTime.now();
-        List<ViewStats> listViews = statClient.getStats(start, end, uris, false);
+        ids.forEach(id -> mapURI.putIfAbsent("/events/" + id, id));
+        List<String> uris = ids.stream().map(id -> "/events/" + id).toList();
+        LocalDateTime end = LocalDateTime.now(); //по текущий момент
+        List<ViewStats> listViews = statClient.getStats(start, end, uris, true);
         listViews.forEach(viewStats -> {
             Long eventId = mapURI.get(viewStats.getUri());
             mapParams.replace(eventId, new ParamEventDto(mapParams.get(eventId).getConfirmedRequests(), viewStats.getHits()));

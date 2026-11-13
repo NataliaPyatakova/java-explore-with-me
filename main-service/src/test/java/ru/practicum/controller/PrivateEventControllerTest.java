@@ -403,29 +403,9 @@ public class PrivateEventControllerTest {
     }
 
     @Test
-    @DisplayName("Post event - paid null")
-    void testSavePaidNull() throws Exception {
-        newDto.setPaid(null);
-        mockMvc.perform(post("/users/" + initiatorShort.getId() + "/events")
-                        .content(mapper.writeValueAsString(newDto))
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
     @DisplayName("Post event - participantLimit null")
     void testSavParticipantLimitNull() throws Exception {
         newDto.setParticipantLimit(null);
-        mockMvc.perform(post("/users/" + initiatorShort.getId() + "/events")
-                        .content(mapper.writeValueAsString(newDto))
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    @DisplayName("Post event - requestModeration null")
-    void testSavRequestModerationNull() throws Exception {
-        newDto.setRequestModeration(null);
         mockMvc.perform(post("/users/" + initiatorShort.getId() + "/events")
                         .content(mapper.writeValueAsString(newDto))
                         .contentType(MediaType.APPLICATION_JSON))

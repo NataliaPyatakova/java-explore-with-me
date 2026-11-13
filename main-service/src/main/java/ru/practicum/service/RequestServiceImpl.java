@@ -10,7 +10,6 @@ import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.enumeration.RequestStatus;
-import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.RequestMapper;
@@ -53,11 +52,13 @@ public class RequestServiceImpl implements RequestService {
         }
         //если у события указан лимит - проверим-ка сколько у него одобренных заявок
         if (event.getParticipantLimit() > 0) {
-            List<Request> request = requestRepository.findByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+            EventCountRequests countRequests = requestRepository.countConfirmedRequestsByEventId(eventId);
             //если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
-            if (!request.isEmpty() && request.size() >= event.getParticipantLimit()) {
-                throw new ValidationException("The participant limit has been reached",
-                        "For the requested operation the conditions are not met.");
+            if (countRequests != null) {
+                if (countRequests.getCount() >= event.getParticipantLimit()) {
+                    throw new ValidationException("The participant limit has been reached",
+                            "For the requested operation the conditions are not met.");
+                }
             }
         }
         Request request = requestRepository.save(RequestMapper.mapToRequestForCreate(user, event));
@@ -99,33 +100,33 @@ public class RequestServiceImpl implements RequestService {
         log.info("updateRequestsStatus EventRequestStatusUpdateRequest {}", dto);
         EventRequestStatusUpdateResult result = new EventRequestStatusUpdateResult();
         //если у события указан лимит - проверим-ка сколько у него одобренных заявок
-        //если при подтверждении данной заявки, лимит заявок для события исчерпан, то все неподтверждённые заявки необходимо отклонить
         //только для ПОДТВЕРЖДЕНИЯ
         if (dto.getStatus().equals(RequestStatus.CONFIRMED) && event.getParticipantLimit() > 0) {
-            List<Request> request = requestRepository.findByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
+            EventCountRequests countRequests = requestRepository.countConfirmedRequestsByEventId(event.getId());
             //если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
-            if (!request.isEmpty() //заявки были
-                    && (request.size() >= event.getParticipantLimit() //и их уже больше или равно лимиту
-                    || request.size() + dto.getRequestIds().size() > event.getParticipantLimit())) { //или же они плюс то что на входе превысят лимит
+            if (countRequests != null //заявки были
+                    && (countRequests.getCount() >= event.getParticipantLimit() //и их уже больше или равно лимиту
+                    || countRequests.getCount() + dto.getRequestIds().size() > event.getParticipantLimit())) {
+                //или же они плюс то что на входе превысят лимит
                 throw new ValidationException("The participant limit has been reached",
                         "For the requested operation the conditions are not met.");
             }
             //заявок подтвержденных не было, но сам размер заявок на входе больше лимита
-            if (request.isEmpty() && dto.getRequestIds().size() > event.getParticipantLimit()) {
+            if (countRequests == null && dto.getRequestIds().size() > event.getParticipantLimit()) {
                 throw new ValidationException("The participant limit has been reached",
                         "For the requested operation the conditions are not met.");
             }
         }
         List<Request> requests = requestRepository.findAllById(dto.getRequestIds());
-        //сначала проверяем корректность данных - если хоть одтн косяк на выход
+        //сначала проверяем корректность данных - если хоть один косяк - на выход
         requests.forEach(request -> {
             if (!request.getEvent().getId().equals(event.getId())) {
-                throw new BadRequestException("Requests must belong to current Event",
+                throw new ValidationException("Requests must belong to current Event",
                         "Incorrectly made request.");
             }
             //заявки должны быть все в состоянии PENDING 409
             if (!request.getStatus().equals(RequestStatus.PENDING)) {
-                throw new BadRequestException("Request must have status PENDING",
+                throw new ValidationException("Request must have status PENDING",
                         "Incorrectly made request.");
             }
         });
@@ -144,8 +145,8 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
-    public List<EventCountRequests> countRequestsByEventId(List<Long> ids, RequestStatus status) {
-        return requestRepository.countRequestsByEventId(ids, status);
+    public List<EventCountRequests> countConfirmedRequestsByListEventId(List<Long> ids) {
+        return requestRepository.countConfirmedRequestsByListEventId(ids);
     }
 
     private Request findRequestById(Long id) {

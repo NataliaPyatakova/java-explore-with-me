@@ -60,6 +60,11 @@ public class PublicEventController {
                 throw new BadRequestException("Bad request", "Parameter sort could be EVENT_DATE or VIEWS");
             }
         }
+        if (rangeStart != null && rangeEnd != null) {
+            if (rangeStart.isAfter(rangeEnd)) {
+                throw new BadRequestException("Bad request", "Parameter rangeEnd should be after rangeStart");
+            }
+        }
         List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
         EndpointHit endpointHit = new EndpointHit()
                 .setApp("ExplorerWithMeApplication")

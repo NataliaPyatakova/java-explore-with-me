@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -42,10 +43,58 @@ public class ErrorHandler {
                 LocalDateTime.now().format(dtf));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({MissingServletRequestParameterException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST) //400
-    public ApiError handleIncorrectParameter(final RuntimeException e) {
-        log.info("handleIncorrectParameter {}", e.getMessage());
+    public ApiError handleMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
+        log.info("handleMissingServletRequestParameterException {}", e.getMessage());
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        String stackTrace = sw.toString();
+        return new ApiError(
+                new ArrayList<>(Collections.singleton(stackTrace)),
+                e.getMessage(),
+                "",
+                HttpStatus.BAD_REQUEST.toString(),
+                LocalDateTime.now().format(dtf));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST) //400
+    public ApiError handleMethodArgumentTypeMismatchException(final MethodArgumentTypeMismatchException e) {
+        log.info("handleMethodArgumentTypeMismatchException {}", e.getMessage());
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        String stackTrace = sw.toString();
+        return new ApiError(
+                new ArrayList<>(Collections.singleton(stackTrace)),
+                e.getMessage(),
+                "",
+                HttpStatus.BAD_REQUEST.toString(),
+                LocalDateTime.now().format(dtf));
+    }
+
+    @ExceptionHandler({ConstraintViolationException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST) //400
+    public ApiError handleConstraintViolationException(final ConstraintViolationException e) {
+        log.info("handleConstraintViolationException {}", e.getMessage());
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        String stackTrace = sw.toString();
+        return new ApiError(
+                new ArrayList<>(Collections.singleton(stackTrace)),
+                e.getMessage(),
+                "",
+                HttpStatus.BAD_REQUEST.toString(),
+                LocalDateTime.now().format(dtf));
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST) //400
+    public ApiError handleMethodArgumentNotValidException(final MethodArgumentNotValidException e) {
+        log.info("handleMethodArgumentNotValidException {}", e.getMessage());
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);

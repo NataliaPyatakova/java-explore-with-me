@@ -14,7 +14,10 @@ import ru.practicum.dto.compilation.ParamCompilationFindAll;
 import ru.practicum.dto.compilation.UpdateCompilationRequest;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.model.*;
+import ru.practicum.model.Category;
+import ru.practicum.model.Event;
+import ru.practicum.model.Location;
+import ru.practicum.model.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

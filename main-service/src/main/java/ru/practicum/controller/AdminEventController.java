@@ -57,6 +57,11 @@ public class AdminEventController {
             );
             params.setStates(listEventState);
         }
+        if (rangeStart != null && rangeEnd != null) {
+            if (rangeStart.isAfter(rangeEnd)) {
+                throw new BadRequestException("Bad request", "Parameter rangeEnd should be after rangeStart");
+            }
+        }
         return eventService.findEventsByAdmin(params);
     }
 

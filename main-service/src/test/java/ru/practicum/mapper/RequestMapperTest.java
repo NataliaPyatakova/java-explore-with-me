@@ -23,10 +23,12 @@ public class RequestMapperTest {
     private final Event eventWithModer = new Event()
             .setId(1L)
             .setTitle("test_title")
+            .setParticipantLimit(1)
             .setRequestModeration(true);
     private final Event eventNoModer = new Event()
             .setId(2L)
             .setTitle("test_title2")
+            .setParticipantLimit(1)
             .setRequestModeration(false);
     private final Request request = new Request()
             .setId(1L)
@@ -34,10 +36,20 @@ public class RequestMapperTest {
             .setEvent(eventWithModer)
             .setCreated(date)
             .setStatus(RequestStatus.PENDING);
+    private final Event eventNoModerNoLimit = new Event()
+            .setId(3L)
+            .setTitle("test_title3")
+            .setParticipantLimit(0)
+            .setRequestModeration(false);
+    private final Event eventWithModerNoLimit = new Event()
+            .setId(4L)
+            .setTitle("test_title4")
+            .setParticipantLimit(0)
+            .setRequestModeration(true);
 
     @Test
-    @DisplayName("Тест маппера из сущностей в Request с модерацией")
-    void testFromEntityToRequestWithModer() {
+    @DisplayName("Тест маппера из сущностей в Request с модерацией и с лимитом")
+    void testFromEntityToRequestWithModerWithLimit() {
         Request result = RequestMapper.mapToRequestForCreate(requester, eventWithModer);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(RequestStatus.PENDING, result.getStatus());
@@ -46,13 +58,33 @@ public class RequestMapperTest {
     }
 
     @Test
-    @DisplayName("Тест маппера из сущностей в Request без модерации")
-    void testFromEntityToRequestNoModer() {
+    @DisplayName("Тест маппера из сущностей в Request без модерации и с лимитом")
+    void testFromEntityToRequestNoModerWithLimit() {
         Request result = RequestMapper.mapToRequestForCreate(requester, eventNoModer);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(RequestStatus.CONFIRMED, result.getStatus());
         Assertions.assertEquals(requester, result.getRequester());
         Assertions.assertEquals(eventNoModer, result.getEvent());
+    }
+
+    @Test
+    @DisplayName("Тест маппера из сущностей в Request без модерации и без лимита")
+    void testFromEntityToRequestNoModerNoLimit() {
+        Request result = RequestMapper.mapToRequestForCreate(requester, eventNoModerNoLimit);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(RequestStatus.CONFIRMED, result.getStatus());
+        Assertions.assertEquals(requester, result.getRequester());
+        Assertions.assertEquals(eventNoModerNoLimit, result.getEvent());
+    }
+
+    @Test
+    @DisplayName("Тест маппера из сущностей в Request с модерацией и без лимита")
+    void testFromEntityToRequestWithModerNoLimit() {
+        Request result = RequestMapper.mapToRequestForCreate(requester, eventWithModerNoLimit);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(RequestStatus.CONFIRMED, result.getStatus());
+        Assertions.assertEquals(requester, result.getRequester());
+        Assertions.assertEquals(eventWithModerNoLimit, result.getEvent());
     }
 
     @Test

@@ -20,7 +20,12 @@ public class RequestMapper {
         request.setEvent(event);
         //если для события отключена пре-модерация запросов на участие,
         // то запрос должен автоматически перейти в состояние подтвержденного
-        request.setStatus(event.isRequestModeration() ? RequestStatus.PENDING : RequestStatus.CONFIRMED);
+        //по тестам постамн - запросы на событие с нулевым лимитом сразу падают в CONFIRMED
+        if (event.getParticipantLimit() == 0) {
+            request.setStatus(RequestStatus.CONFIRMED);
+        } else {
+            request.setStatus(event.isRequestModeration() ? RequestStatus.PENDING : RequestStatus.CONFIRMED);
+        }
         return request;
     }
 

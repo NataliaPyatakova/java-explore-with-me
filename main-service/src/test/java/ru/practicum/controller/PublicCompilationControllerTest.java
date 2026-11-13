@@ -7,8 +7,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.dto.compilation.CompilationDto;
-import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.compilation.ParamCompilationFindAll;
+import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.service.CompilationService;
 
 import java.util.ArrayList;

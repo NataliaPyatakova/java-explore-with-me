@@ -10,10 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
-import ru.practicum.enumeration.AdminEventStateAction;
-import ru.practicum.enumeration.EventState;
-import ru.practicum.enumeration.RequestStatus;
-import ru.practicum.enumeration.UserEventStateAction;
+import ru.practicum.enumeration.*;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.EventMapper;
@@ -127,7 +125,7 @@ public class EventServiceTest {
         newEventDto.setEventDate(now.plusHours(1)); //событие через час
         try {
             eventService.save(newEventDto, initiator.getId());
-        } catch (ValidationException ex) {
+        } catch (BadRequestException ex) {
             Assertions.assertEquals("Field: eventDate. Error: должно содержать дату, которая еще не наступила. Value: "
                     + newEventDto.getEventDate().format(dtf), ex.getReason());
             Assertions.assertEquals("For the requested operation the conditions are not met.", ex.getMessage());
@@ -230,7 +228,7 @@ public class EventServiceTest {
         try {
             //пытаемся изменить опубликованное
             eventService.updateByInitiator(updateEventUserRequest, eventFullDto.getId(), initiator.getId());
-        } catch (ValidationException e) {
+        } catch (BadRequestException e) {
             Assertions.assertEquals("Field: eventDate. Error: должно содержать дату, " +
                     "которая еще не наступила. Value: " + now.plusHours(1).format(dtf), e.getMessage());
             Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
@@ -1098,6 +1096,584 @@ public class EventServiceTest {
             Assertions.assertEquals("Event with id=999 was not found", e.getMessage());
             Assertions.assertEquals("The required object was not found.", e.getReason());
         }
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - без параметров, нет опубликованных событий")
+    void testFindPublishedEventsByParamNoEvents() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        eventService.save(newEventDto, initiator.getId());
+        //задаем дефолтные параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - без параметров")
+    void testFindPublishedEventsByParam() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем дефолтные параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по категории")
+    void testFindPublishedEventsByParamByCategory() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        List<Long> categories = new ArrayList<>();
+        categories.add(category.getId());
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setCategories(categories)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по категории, нет событий")
+    void testFindPublishedEventsByParamByCategoryNoEvents() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(category2);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        List<Long> categories = new ArrayList<>();
+        categories.add(category2.getId());
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setCategories(categories)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по paid")
+    void testFindPublishedEventsByParamByPaid() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setPaid(true)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по paid, нет событий")
+    void testFindPublishedEventsByParamByPaidNoEvents() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setPaid(false)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по RangeStart и RangeEnd")
+    void testFindPublishedEventsByParamByRangeStart() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setRangeStart(date.minusDays(1))
+                .setRangeEnd(date.plusDays(1))
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по text, есть в обоих полях, строчные")
+    void testFindPublishedEventsByParamByText() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setText("tion") //этот текст есть и в annotation и в description
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по text, есть в обоих полях, прописные")
+    void testFindPublishedEventsByParamByTextUpperCase() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setText("TION") //этот текст есть и в annotation и в description
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по text, есть в одном полях, строчные")
+    void testFindPublishedEventsByParamByTextAnnotation() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setText("annot") //этот текст есть только в annotation
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по text, есть в одном полях, строчные")
+    void testFindPublishedEventsByParamByTextDescription() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setText("descr") //этот текст есть только в description
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по text, нет в полях")
+    void testFindPublishedEventsByParamByTextNoEvents() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setText("rest")
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по onlyAvailable")
+    void testFindPublishedEventsByParamByOnlyAvailable() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        //сейчас ищем только по безлимитным событиям - возможно логика изменится
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setOnlyAvailable(true)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto.getTitle(), result.getFirst().getTitle());
+        Assertions.assertEquals(eventFullDto.getAnnotation(), result.getFirst().getAnnotation());
+        Assertions.assertEquals(eventFullDto.getEventDate(), result.getFirst().getEventDate());
+        Assertions.assertEquals(eventFullDto.getPaid(), result.getFirst().getPaid());
+        Assertions.assertEquals(eventFullDto.getInitiator(), result.getFirst().getInitiator());
+        Assertions.assertEquals(eventFullDto.getCategory(), result.getFirst().getCategory());
+        Assertions.assertEquals(eventFullDto.getConfirmedRequests(), result.getFirst().getConfirmedRequests());
+        Assertions.assertEquals(eventFullDto.getViews(), result.getFirst().getViews());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - по onlyAvailable. без событий")
+    void testFindPublishedEventsByParamByOnlyAvailableNoEvents() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        //сейчас ищем только по безлимитным событиям - возможно логика изменится
+        newEventDto.setParticipantLimit(1);
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        //обновляем статус от админа - публикуем
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setOnlyAvailable(true)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - сортировка по дате")
+    void testFindPublishedEventsSotByEventDate() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        newEventDto2.setCategory(category.getId());
+        newEventDto2.setEventDate(date.plusDays(1)); //это событие позже первого
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        EventFullDto eventFullDto2 = eventService.save(newEventDto2, initiator.getId());
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto2.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setSort(Sort.EVENT_DATE)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(2, result.size());
+        Assertions.assertEquals(eventFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(eventFullDto2.getId(), result.getLast().getId());
+    }
+
+    @Test
+    @DisplayName("Поиск events по параметрам от public - сортировка по views")
+    void testFindPublishedEventsSotByViews() {
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        newEventDto.setCategory(category.getId());
+        newEventDto2.setCategory(category.getId());
+        newEventDto2.setEventDate(date.plusDays(1)); //это событие позже первого
+        EventFullDto eventFullDto = eventService.save(newEventDto, initiator.getId());
+        EventFullDto eventFullDto2 = eventService.save(newEventDto2, initiator.getId());
+        updateEventAdminRequest.setTitle(null);
+        updateEventAdminRequest.setAnnotation(null);
+        updateEventAdminRequest.setDescription(null);
+        updateEventAdminRequest.setLocation(null);
+        updateEventAdminRequest.setRequestModeration(null);
+        updateEventAdminRequest.setParticipantLimit(null);
+        updateEventAdminRequest.setCategory(null);
+        updateEventAdminRequest.setEventDate(null);
+        updateEventAdminRequest.setPaid(null);
+        updateEventAdminRequest.setStateAction(AdminEventStateAction.PUBLISH_EVENT);
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto.getId());
+        eventService.updateByAdmin(updateEventAdminRequest, eventFullDto2.getId());
+        //задаем параметры поиска
+        ParamEventsFindByParam params = new ParamEventsFindByParam()
+                .setSort(Sort.VIEWS)
+                .setOnlyAvailable(false)
+                .setFrom(0)
+                .setSize(10);
+        List<EventShortDto> result = eventService.findPublishedEventsByParam(params);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(2, result.size());
     }
 
     @Test

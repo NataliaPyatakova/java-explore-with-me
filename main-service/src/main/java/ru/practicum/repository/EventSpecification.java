@@ -51,18 +51,14 @@ public class EventSpecification {
                 criteriaBuilder.equal(root.get("paid"), paid);
     }
 
-    public static Specification<Event> hasAnnotationLike(String text) {
+    public static Specification<Event> hasTextFieldsLike(String text) {
         return (root, query, criteriaBuilder) ->
-                criteriaBuilder.like(criteriaBuilder.lower(root.get("annotation")), "%" + text.toLowerCase() + "%");
+                criteriaBuilder.or(criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + text.toLowerCase() + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("annotation")), "%" + text.toLowerCase() + "%"));
     }
 
-    public static Specification<Event> hasDescriptionLike(String text) {
+    public static Specification<Event> hasParticipantLimit(Integer limit) {
         return (root, query, criteriaBuilder) ->
-                criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + text.toLowerCase() + "%");
-    }
-
-    public static Specification<Event> hasParticipationLimit(Integer limit) {
-        return (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get("participationLimit"), limit);
+                criteriaBuilder.equal(root.get("participantLimit"), limit);
     }
 }

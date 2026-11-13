@@ -3,6 +3,7 @@ package ru.practicum.dto.event;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -31,6 +32,7 @@ public class NewEventDto {
     @NotNull
     private LocationDto location;
     private Boolean paid = false;
+    @PositiveOrZero
     private Integer participantLimit = 0;
     private Boolean requestModeration = true;
 
