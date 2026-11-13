@@ -266,7 +266,7 @@ public class EventServiceImpl implements EventService {
                 EventMapper.mapFromEventToEventShortDto(event, mapParams.get(event.getId()))).toList();
         //сортировка
         if (params.getSort() != null) {
-            if (params.getSort().equals(ru.practicum.enumeration.Sort.VIEWS)) {//либо по количеству просмотров
+            if (params.getSort().equals(ru.practicum.enumeration.Sort.VIEWS)) { //либо по количеству просмотров
                 result = listEventsShort.stream().sorted(Comparator.comparing(EventShortDto::getViews)).toList();
             }
             if (params.getSort().equals(ru.practicum.enumeration.Sort.EVENT_DATE)) { //либо по датам событий
