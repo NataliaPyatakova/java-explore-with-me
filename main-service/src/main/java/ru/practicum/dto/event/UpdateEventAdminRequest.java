@@ -7,6 +7,8 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import ru.practicum.enumeration.AdminEventStateAction;
 
+import java.util.Objects;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,5 +38,11 @@ public class UpdateEventAdminRequest extends UpdateEventRequest {
                 && super.getParticipantLimit().equals(that.getParticipantLimit())
                 && super.getRequestModeration().equals(that.getRequestModeration())
                 && stateAction == that.stateAction;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.getTitle(), super.getDescription(), super.getAnnotation(), super.getCategory(),
+                super.getLocation(), super.getPaid(), super.getParticipantLimit(), super.getRequestModeration(), stateAction);
     }
 }
