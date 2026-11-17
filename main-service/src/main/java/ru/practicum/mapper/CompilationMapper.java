@@ -9,7 +9,9 @@ import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.model.Compilation;
 import ru.practicum.model.Event;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CompilationMapper {
@@ -27,7 +29,7 @@ public class CompilationMapper {
         compilationDto.setId(compilation.getId());
         compilationDto.setTitle(compilation.getTitle());
         compilationDto.setPinned(compilation.isPinned());
-        compilationDto.setEvents(events);
+        compilationDto.setEvents(Objects.requireNonNullElseGet(events, ArrayList::new));
         return compilationDto;
     }
 

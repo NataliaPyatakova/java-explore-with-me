@@ -336,6 +336,7 @@ public class EventServiceImpl implements EventService {
         Map<String, Long> mapURI = new HashMap<>();
         ids.forEach(id -> mapURI.putIfAbsent("/events/" + id, id));
         List<String> uris = ids.stream().map(id -> "/events/" + id).toList();
+        start = start.minusDays(1); //на всякий случай сдвинем на день раньше
         LocalDateTime end = LocalDateTime.now(); //по текущий момент
         List<ViewStats> listViews = statClient.getStats(start, end, uris, true);
         listViews.forEach(viewStats -> {

@@ -33,6 +33,7 @@ public class RestStatClient implements StatClient {
     @Override
     public void hit(EndpointHit endpointHit) {
         URI uri = UriComponentsBuilder.fromUriString(statsUrl + "/hit").build().toUri();
+        log.info("hit endpointHit {} uri {}", endpointHit, uri);
         try {
             restClient.post()
                     .uri(uri)
@@ -41,12 +42,13 @@ public class RestStatClient implements StatClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (ResourceAccessException e) {
-            log.info("Сервис статистики не запущен! Не могу сохранить статистику.");
+            log.info("The statistics service is not running! Can't save statistics. ResourceAccessException {} ", e.getMessage());
         }
     }
 
     @Override
     public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+        log.info("getStats start {}, end {}, uris {}, unique {}", start, end, uris, unique);
         URI uri = UriComponentsBuilder.fromUriString(statsUrl + "/stats")
                 .queryParam("start", start.format(dtf))
                 .queryParam("end", end.format(dtf))
@@ -56,6 +58,7 @@ public class RestStatClient implements StatClient {
                 .encode()
                 .toUri();
         List<ViewStats> result = new ArrayList<>();
+        log.info("getStats uri {}", uri);
         try {
             result = restClient.get()
                     .uri(uri)
@@ -63,7 +66,7 @@ public class RestStatClient implements StatClient {
                     .body(new ParameterizedTypeReference<>() {
                     });
         } catch (ResourceAccessException e) {
-            log.info("Сервис статистики не запущен! Не могу получить статистику.");
+            log.info("The statistics service is not running! Can't receive statistics. ResourceAccessException {} ", e.getMessage());
         }
         return result;
     }
