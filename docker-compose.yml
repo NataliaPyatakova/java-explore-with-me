@@ -33,12 +33,13 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      ewm-db:
-        condition: service_healthy
+      - ewm-db
+      - stats-server
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/main-db
       - SPRING_DATASOURCE_USERNAME=dbuser
       - SPRING_DATASOURCE_PASSWORD=12345
+      - STATS_SERVER_URL=http://localhost:9090
 
   ewm-db:
     image: postgres:16.1
