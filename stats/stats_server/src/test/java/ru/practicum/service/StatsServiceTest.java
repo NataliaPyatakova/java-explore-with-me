@@ -346,7 +346,31 @@ public class StatsServiceTest {
         try {
             statsService.getStats(endTime, startTime, uris, false);
         } catch (BadRequestException ex) {
-            Assertions.assertEquals("Дата начала позже даты конца", ex.getMessage());
+            Assertions.assertEquals("Date start is after date end", ex.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("Получение stats - null start")
+    public void testGetStatNullStart() {
+        statsService.save(endpointHit); //пройдет
+        statsService.save(endpointHitOtherIp); //пройдет
+        try {
+            statsService.getStats(null, startTime, uris, false);
+        } catch (BadRequestException ex) {
+            Assertions.assertEquals("Date start is null", ex.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("Получение stats - null end")
+    public void testGetStatNullEnd() {
+        statsService.save(endpointHit); //пройдет
+        statsService.save(endpointHitOtherIp); //пройдет
+        try {
+            statsService.getStats(startTime, null, uris, false);
+        } catch (BadRequestException ex) {
+            Assertions.assertEquals("Date end is null", ex.getMessage());
         }
     }
 }
