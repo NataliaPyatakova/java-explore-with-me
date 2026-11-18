@@ -737,10 +737,10 @@ public class RequestServiceTest {
         event.setLocation(location);
         event.setParticipantLimit(2);
         em.persist(event);
-        //сохранили один нормальный запрос
+        //сохранили два нормальных запроса
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
         ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
-        //проставляем ему статус подтвержден
+        //проставляем им статус подтвержден
         List<Long> requestIds = new ArrayList<>();
         requestIds.add(requestDto.getId());
         requestIds.add(requestDto2.getId());
@@ -816,7 +816,7 @@ public class RequestServiceTest {
     }
 
     @Test
-    @DisplayName("Обновление статусов request confirmed - лимит у события есть, нет подтвержденных запросы, мы не влезаем")
+    @DisplayName("Обновление статусов request confirmed - лимит у события есть, нет подтвержденных запросы, целиком мы не влезаем")
     public void testUpdateRequestsStatusConfirmedOverTheLimitWithNoConfirmedRequest() {
         em.persist(requester);
         em.persist(requester2);
@@ -832,32 +832,31 @@ public class RequestServiceTest {
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
         //а теперь еще один запрос
         ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
-        //проставляем ему статус подтвержден обоим сразу - мы не влезем в лимит
+        //проставляем ему статус подтвержден обоим сразу - мы целиком не влезаем в лимит
         List<Long> requestIds = new ArrayList<>();
         requestIds.add(requestDto.getId());
         requestIds.add(requestDto2.getId());
         EventRequestStatusUpdateRequest dto = new EventRequestStatusUpdateRequest()
                 .setRequestIds(requestIds)
                 .setStatus(RequestStatus.CONFIRMED);
-        try {
-            requestService.updateRequestsStatus(dto, event);
-        } catch (ValidationException e) {
-            Assertions.assertEquals("The participant limit has been reached", e.getMessage());
-            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
-            //проверим сам статус - он не должен был измениться
-            //событие раз
-            List<ParticipationRequestDto> requestDtoList = requestService.findByUserId(requester.getId());
-            Assertions.assertEquals(requestDto.getId(), requestDtoList.getFirst().getId());
-            Assertions.assertEquals(RequestStatus.PENDING, requestDtoList.getFirst().getStatus());
-            //событие два
-            List<ParticipationRequestDto> requestDtoList2 = requestService.findByUserId(requester2.getId());
-            Assertions.assertEquals(requestDto2.getId(), requestDtoList2.getFirst().getId());
-            Assertions.assertEquals(RequestStatus.PENDING, requestDtoList2.getFirst().getStatus());
-        }
+        EventRequestStatusUpdateResult result = requestService.updateRequestsStatus(dto, event);
+        Assertions.assertEquals(1, result.getConfirmedRequests().size());
+        Assertions.assertEquals(requestDto.getId(), result.getConfirmedRequests().getFirst().getId());
+        Assertions.assertEquals(1, result.getRejectedRequests().size());
+        Assertions.assertEquals(requestDto2.getId(), result.getRejectedRequests().getFirst().getId());
+        //проверим сам статус - он должен был измениться
+        //событие раз
+        List<ParticipationRequestDto> requestDtoList = requestService.findByUserId(requester.getId());
+        Assertions.assertEquals(requestDto.getId(), requestDtoList.getFirst().getId());
+        Assertions.assertEquals(RequestStatus.CONFIRMED, requestDtoList.getFirst().getStatus());
+        //событие два
+        List<ParticipationRequestDto> requestDtoList2 = requestService.findByUserId(requester2.getId());
+        Assertions.assertEquals(requestDto2.getId(), requestDtoList2.getFirst().getId());
+        Assertions.assertEquals(RequestStatus.REJECTED, requestDtoList2.getFirst().getStatus());
     }
 
     @Test
-    @DisplayName("Обновление статусов request confirmed - лимит у события есть, есть подтвержденных запросы, мы не влезаем")
+    @DisplayName("Обновление статусов request confirmed - лимит у события есть, есть подтвержденных запросы, целиком мы не влезаем")
     public void testUpdateRequestsStatusConfirmedOverTheLimitWithConfirmedRequest2() {
         em.persist(requester);
         em.persist(requester2);
@@ -874,7 +873,7 @@ public class RequestServiceTest {
         ParticipationRequestDto requestDto = requestService.save(requester.getId(), event.getId());
         //а теперь еще один запрос
         ParticipationRequestDto requestDto2 = requestService.save(requester2.getId(), event.getId());
-        //b еще один запрос
+        //и еще один запрос
         ParticipationRequestDto requestDto3 = requestService.save(requester3.getId(), event.getId());
         //проставляем статус подтвержден первому
         List<Long> requestIds = new ArrayList<>();
@@ -884,19 +883,29 @@ public class RequestServiceTest {
                 .setStatus(RequestStatus.CONFIRMED);
         //один проходит
         requestService.updateRequestsStatus(dto, event);
-        try {
-            List<Long> requestIds2 = new ArrayList<>();
-            requestIds2.add(requestDto2.getId());
-            requestIds2.add(requestDto3.getId());
-            EventRequestStatusUpdateRequest dto2 = new EventRequestStatusUpdateRequest()
-                    .setRequestIds(requestIds2)
-                    .setStatus(RequestStatus.CONFIRMED);
-            //плюс еще два - не проходят
-            requestService.updateRequestsStatus(dto2, event);
-        } catch (ValidationException e) {
-            Assertions.assertEquals("The participant limit has been reached", e.getMessage());
-            Assertions.assertEquals("For the requested operation the conditions are not met.", e.getReason());
-        }
+        List<Long> requestIds2 = new ArrayList<>();
+        requestIds2.add(requestDto2.getId());
+        requestIds2.add(requestDto3.getId());
+        EventRequestStatusUpdateRequest dto2 = new EventRequestStatusUpdateRequest()
+                .setRequestIds(requestIds2)
+                .setStatus(RequestStatus.CONFIRMED);
+        //теперь еще два - должен пройти только один
+        EventRequestStatusUpdateResult result = requestService.updateRequestsStatus(dto2, event);
+        //запрос два
+        Assertions.assertEquals(1, result.getConfirmedRequests().size());
+        Assertions.assertEquals(requestDto2.getId(), result.getConfirmedRequests().getFirst().getId());
+        //запрос три
+        Assertions.assertEquals(1, result.getRejectedRequests().size());
+        Assertions.assertEquals(requestDto3.getId(), result.getRejectedRequests().getFirst().getId());
+        //проверим сам статус - он должен был измениться
+        //запрос два
+        List<ParticipationRequestDto> requestDtoList = requestService.findByUserId(requester2.getId());
+        Assertions.assertEquals(requestDto2.getId(), requestDtoList.getFirst().getId());
+        Assertions.assertEquals(RequestStatus.CONFIRMED, requestDtoList.getFirst().getStatus());
+        //запрос три
+        List<ParticipationRequestDto> requestDtoList2 = requestService.findByUserId(requester3.getId());
+        Assertions.assertEquals(requestDto3.getId(), requestDtoList2.getFirst().getId());
+        Assertions.assertEquals(RequestStatus.REJECTED, requestDtoList2.getFirst().getStatus());
     }
 
     @Test

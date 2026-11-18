@@ -20,6 +20,7 @@ import ru.practicum.model.User;
 import ru.practicum.repository.EventRepository;
 import ru.practicum.repository.RequestRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -99,24 +100,7 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateRequestsStatus(EventRequestStatusUpdateRequest dto, Event event) {
         log.info("updateRequestsStatus EventRequestStatusUpdateRequest {}", dto);
         EventRequestStatusUpdateResult result = new EventRequestStatusUpdateResult();
-        //если у события указан лимит - проверим-ка сколько у него одобренных заявок
-        //только для ПОДТВЕРЖДЕНИЯ
-        if (dto.getStatus().equals(RequestStatus.CONFIRMED) && event.getParticipantLimit() > 0) {
-            EventCountRequests countRequests = requestRepository.countConfirmedRequestsByEventId(event.getId());
-            //если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
-            if (countRequests != null //заявки были
-                    && (countRequests.getCount() >= event.getParticipantLimit() //и их уже больше или равно лимиту
-                    || countRequests.getCount() + dto.getRequestIds().size() > event.getParticipantLimit())) {
-                //или же они плюс то что на входе превысят лимит
-                throw new ValidationException("The participant limit has been reached",
-                        "For the requested operation the conditions are not met.");
-            }
-            //заявок подтвержденных не было, но сам размер заявок на входе больше лимита
-            if (countRequests == null && dto.getRequestIds().size() > event.getParticipantLimit()) {
-                throw new ValidationException("The participant limit has been reached",
-                        "For the requested operation the conditions are not met.");
-            }
-        }
+        List<Long> confirmedRequests = new ArrayList<>();
         List<Request> requests = requestRepository.findAllById(dto.getRequestIds());
         //сначала проверяем корректность данных - если хоть один косяк - на выход
         requests.forEach(request -> {
@@ -130,11 +114,50 @@ public class RequestServiceImpl implements RequestService {
                         "Incorrectly made request.");
             }
         });
+        //если у события указан лимит - проверим-ка сколько у него одобренных заявок
+        //только для ПОДТВЕРЖДЕНИЯ
+        if (dto.getStatus().equals(RequestStatus.CONFIRMED) && event.getParticipantLimit() > 0) {
+            EventCountRequests countRequests = requestRepository.countConfirmedRequestsByEventId(event.getId());
+            //если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
+            if (countRequests != null //заявки были и их уже больше или равно лимиту
+                    && (countRequests.getCount() >= event.getParticipantLimit())) {
+                throw new ValidationException("The participant limit has been reached",
+                        "For the requested operation the conditions are not met.");
+            }
+            if ((countRequests != null //заявки были и они плюс то что на входе превысят лимит
+                    && (countRequests.getCount() + dto.getRequestIds().size() > event.getParticipantLimit()))
+                    //или заявок подтвержденных не было, но сам размер заявок на входе больше лимита
+                    || (countRequests == null && dto.getRequestIds().size() > event.getParticipantLimit())) {
+                //тогда для части из них проставляем подтверждение - остальные отклоняем
+                //вычисляем количество заявок на подтверждение
+                int numberOfConfirmed;
+                if (countRequests != null) {
+                    numberOfConfirmed = Math.toIntExact(event.getParticipantLimit() - countRequests.getCount());
+                } else {
+                    numberOfConfirmed = Math.toIntExact(event.getParticipantLimit());
+                }
+                //набираем подтвержденные
+                for (int i = 0; i < numberOfConfirmed; i++) {
+                    confirmedRequests.add(requests.get(i).getId());
+                }
+            }
+        }
         //теперь передергиваем данные
         requests.forEach(request -> {
             if (dto.getStatus().equals(RequestStatus.CONFIRMED)) {
-                request.setStatus(RequestStatus.CONFIRMED);
-                result.getConfirmedRequests().add(RequestMapper.mapToDtoFromRequest(request));
+                if (!confirmedRequests.isEmpty()) {
+                    //тут возможны варианты
+                    if (confirmedRequests.contains(request.getId())) {
+                        request.setStatus(RequestStatus.CONFIRMED);
+                        result.getConfirmedRequests().add(RequestMapper.mapToDtoFromRequest(request));
+                    } else {
+                        request.setStatus(RequestStatus.REJECTED);
+                        result.getRejectedRequests().add(RequestMapper.mapToDtoFromRequest(request));
+                    }
+                } else {  //все в подтверждено
+                    request.setStatus(RequestStatus.CONFIRMED);
+                    result.getConfirmedRequests().add(RequestMapper.mapToDtoFromRequest(request));
+                }
             }
             if (dto.getStatus().equals(RequestStatus.REJECTED)) {
                 request.setStatus(RequestStatus.REJECTED);
