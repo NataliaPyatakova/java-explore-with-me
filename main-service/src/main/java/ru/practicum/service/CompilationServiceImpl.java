@@ -2,8 +2,6 @@ package ru.practicum.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -77,10 +75,10 @@ public class CompilationServiceImpl implements CompilationService {
         List<CompilationDto> result = new ArrayList<>();
         //в требованиях не нашла - сортируем по Id чтобы не кучей
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize(), sortById);
+        OffsetBasedPageRequest request = OffsetBasedPageRequest.of(params.getFrom(), params.getSize(), sortById);
         Specification<Compilation> spec = Specification.where(null);
         if (params.getPinned() != null) spec = spec.and(CompilationSpecification.isPinned(params.getPinned()));
-        List<Compilation> compilationList = compilationRepository.findAll(spec, pageable).getContent();
+        List<Compilation> compilationList = compilationRepository.findAll(spec, request).getContent();
         if (!compilationList.isEmpty()) {
             //собираем все Id event
             List<Long> ids = new ArrayList<>();

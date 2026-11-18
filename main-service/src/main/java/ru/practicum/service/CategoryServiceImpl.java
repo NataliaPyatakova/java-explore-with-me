@@ -3,8 +3,6 @@ package ru.practicum.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,8 +68,8 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("findAll params {}", params);
         //в требованиях не нашла - сортиурем по Id чтобы не кучей
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize(), sortById);
-        Page<Category> page = categoryRepository.findAll(pageable);
+        OffsetBasedPageRequest request = OffsetBasedPageRequest.of(params.getFrom(), params.getSize(), sortById);
+        Page<Category> page = categoryRepository.findAll(request);
         return page.getContent().stream().map(CategoryMapper::mapToCategoryDto).toList();
     }
 

@@ -2,8 +2,6 @@ package ru.practicum.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -165,10 +163,10 @@ public class EventServiceImpl implements EventService {
         userService.findById(params.getUserId());
         //в требованиях не нашла - сортируем по Id чтобы не кучей
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize(), sortById);
+        OffsetBasedPageRequest request = OffsetBasedPageRequest.of(params.getFrom(), params.getSize(), sortById);
         Specification<Event> spec = Specification.where(null);
         spec = spec.and(EventSpecification.hasInitiatorId(params.getUserId()));
-        List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
+        List<Event> listEvents = eventRepository.findAll(spec, request).getContent();
         Map<Long, ParamEventDto> mapParams;
         if (!listEvents.isEmpty()) {
             //непонятно нужна ли статистика в Private controller - пока отдаем
@@ -188,7 +186,7 @@ public class EventServiceImpl implements EventService {
     public List<EventFullDto> findEventsByAdmin(ParamEventsFindByAdmin params) {
         log.info("findEventsByAdmin params {}", params);
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize(), sortById);
+        OffsetBasedPageRequest request = OffsetBasedPageRequest.of(params.getFrom(), params.getSize(), sortById);
         Specification<Event> spec = Specification.where(null);
         if (params.getUsers() != null) spec = spec.and(EventSpecification.hasInitiatorIdInList(params.getUsers()));
         if (params.getStates() != null) spec = spec.and(EventSpecification.hasStateInList(params.getStates()));
@@ -196,7 +194,7 @@ public class EventServiceImpl implements EventService {
             spec = spec.and(EventSpecification.hasCategoryIdInList(params.getCategories()));
         if (params.getRangeStart() != null) spec = spec.and(EventSpecification.isAfter(params.getRangeStart()));
         if (params.getRangeEnd() != null) spec = spec.and(EventSpecification.isBefore(params.getRangeEnd()));
-        List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
+        List<Event> listEvents = eventRepository.findAll(spec, request).getContent();
         Map<Long, ParamEventDto> mapParams;
         if (!listEvents.isEmpty()) {
             //непонятно нужна ли статистика в admin controller - пока отдаем
@@ -232,7 +230,7 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> findPublishedEventsByParam(ParamEventsFindByParam params) {
         log.info("findPublishedEventsByParam params {}", params);
         List<EventShortDto> result = new ArrayList<>();
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize());
+        OffsetBasedPageRequest request = OffsetBasedPageRequest.of(params.getFrom(), params.getSize());
         Specification<Event> spec = Specification.where(null);
         //в выдаче должны быть только опубликованные события
         spec = spec.and(EventSpecification.hasState(EventState.PUBLISHED));
@@ -249,7 +247,7 @@ public class EventServiceImpl implements EventService {
         if (params.getRangeStart() != null) spec = spec.and(EventSpecification.isAfter(params.getRangeStart()));
         if (params.getRangeEnd() != null) spec = spec.and(EventSpecification.isBefore(params.getRangeEnd()));
         if (params.isOnlyAvailable()) spec = spec.and(EventSpecification.hasParticipantLimit(0));
-        List<Event> listEvents = eventRepository.findAll(spec, pageable).getContent();
+        List<Event> listEvents = eventRepository.findAll(spec, request).getContent();
         Map<Long, ParamEventDto> mapParams;
         if (!listEvents.isEmpty()) {
             //информация о каждом событии должна включать в себя количество просмотров
