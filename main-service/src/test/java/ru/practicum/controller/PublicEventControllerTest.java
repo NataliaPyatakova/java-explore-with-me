@@ -8,6 +8,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.client.StatClient;
 import ru.practicum.dto.category.CategoryDto;
+import ru.practicum.dto.comment.CommentFullDto;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.LocationDto;
@@ -15,6 +16,7 @@ import ru.practicum.dto.event.ParamEventsFindByParam;
 import ru.practicum.dto.user.UserShortDto;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.enumeration.Sort;
+import ru.practicum.service.CommentService;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
@@ -36,6 +38,9 @@ public class PublicEventControllerTest {
 
     @MockBean
     private EventService eventService;
+
+    @MockBean
+    private CommentService commentService;
 
     @MockBean
     private StatClient statClient;
@@ -62,7 +67,7 @@ public class PublicEventControllerTest {
             .setConfirmedRequests(0L)
             .setViews(0L)
             .setState(EventState.PUBLISHED);
-    List<EventShortDto> list = new ArrayList<>();
+    private final List<EventShortDto> list = new ArrayList<>();
     private final EventShortDto eventShortDto = new EventShortDto()
             .setId(3L)
             .setTitle("event")
@@ -73,6 +78,13 @@ public class PublicEventControllerTest {
             .setCategory(categoryDto)
             .setConfirmedRequests(0L)
             .setViews(0L);
+    private final List<CommentFullDto> listComments = new ArrayList<>();
+    private final CommentFullDto commentFullDto = new CommentFullDto()
+            .setId(1L)
+            .setEvent(1L)
+            .setAuthor(1L)
+            .setText("test_comment")
+            .setDateCreation(date);
 
     @Test
     @DisplayName("Get event - все хорошо")
@@ -202,5 +214,19 @@ public class PublicEventControllerTest {
                 .andExpect(jsonPath("$.[0].initiator.name", is(eventShortDto.getInitiator().getName()), String.class))
                 .andExpect(jsonPath("$.[0].paid", is(eventShortDto.getPaid()), Boolean.class))
                 .andExpect(jsonPath("$.[0].views", is(eventShortDto.getViews()), Long.class));
+    }
+
+    @Test
+    @DisplayName("Get commentaries by event - все хорошо")
+    void testFindAllCommentariesByEventIdAllOk() throws Exception {
+        listComments.add(commentFullDto);
+        when(commentService.findAllByEventId(eventFullDto.getId())).thenReturn(listComments);
+        mockMvc.perform(get("/events/" + eventFullDto.getId() + "/commentaries"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.[0].id", is(commentFullDto.getId()), Long.class))
+                .andExpect(jsonPath("$.[0].author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.[0].event", is(commentFullDto.getEvent()), Long.class))
+                .andExpect(jsonPath("$.[0].text", is(commentFullDto.getText()), String.class))
+                .andExpect(jsonPath("$.[0].dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
     }
 }

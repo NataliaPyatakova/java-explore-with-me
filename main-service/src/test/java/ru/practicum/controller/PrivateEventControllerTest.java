@@ -9,11 +9,16 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.dto.category.CategoryDto;
+import ru.practicum.dto.comment.CommentFullDto;
+import ru.practicum.dto.comment.CommentShortDto;
+import ru.practicum.dto.comment.NewCommentDto;
+import ru.practicum.dto.comment.UpdateCommentDto;
 import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.dto.user.UserShortDto;
 import ru.practicum.enumeration.EventState;
 import ru.practicum.enumeration.RequestStatus;
+import ru.practicum.service.CommentService;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
@@ -38,6 +43,9 @@ public class PrivateEventControllerTest {
 
     @MockBean
     private EventService eventService;
+
+    @MockBean
+    private CommentService commentService;
 
     private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final LocalDateTime date = LocalDateTime.now();
@@ -106,6 +114,20 @@ public class PrivateEventControllerTest {
             .setPaid(false)
             .setRequestModeration(false)
             .setLocation(locationDto);
+    private final NewCommentDto newCommentDto = new NewCommentDto().setText("text_comments_very_long_and_More");
+    private final CommentFullDto commentFullDto = new CommentFullDto()
+            .setId(1L)
+            .setEvent(1L)
+            .setAuthor(1L)
+            .setText("test_comment")
+            .setDateCreation(date);
+    private final UpdateCommentDto updateCommentDto = new UpdateCommentDto().setText("up_text_comments_very_long_and_More");
+    private final List<CommentShortDto> listComments = new ArrayList<>();
+    private final CommentShortDto commentShortDto = new CommentShortDto()
+            .setId(1L)
+            .setEvent(1L)
+            .setText("test_comment")
+            .setDateCreation(date);
 
     @Test
     @DisplayName("Get events по пользователю - все хорошо")
@@ -571,5 +593,145 @@ public class PrivateEventControllerTest {
                         .content(mapper.writeValueAsString(updateEventUserRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Post comment - все хорошо")
+    void testSaveCommentOk() throws Exception {
+        when(commentService.save(newCommentDto, 1L, 1L)).thenReturn(commentFullDto);
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
+                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
+                .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
+                .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
+    }
+
+    @Test
+    @DisplayName("Post comment - text null")
+    void testSaveCommentTextNull() throws Exception {
+        newCommentDto.setText(null);
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Post comment - text empty")
+    void testSaveCommentTextEmpty() throws Exception {
+        newCommentDto.setText("");
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Post comment - text blank")
+    void testSaveCommentTextBlank() throws Exception {
+        newCommentDto.setText(" ");
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Post comment - text меньше 20")
+    void testSSaveCommentTextLessThan3() throws Exception {
+        newCommentDto.setText("a".repeat(2));
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Post comment - text больше 7000")
+    void testSaveCommentTextMoreThan3() throws Exception {
+        newCommentDto.setText("a".repeat(7001));
+        mockMvc.perform(post("/users/1/events/1/comment")
+                        .content(mapper.writeValueAsString(newCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Patch comment - все хорошо")
+    void testUpdateCommentOk() throws Exception {
+        when(commentService.update(updateCommentDto, 1L, 1L)).thenReturn(commentFullDto);
+        mockMvc.perform(patch("/users/1/commentaries/1")
+                        .content(mapper.writeValueAsString(updateCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
+                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
+                .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
+                .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
+    }
+
+    @Test
+    @DisplayName("Patch comment - text empty")
+    void testUpdateCommentTextEmpty() throws Exception {
+        updateCommentDto.setText("");
+        mockMvc.perform(patch("/users/1/commentaries/1")
+                        .content(mapper.writeValueAsString(updateCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Patch comment - text blank")
+    void testUpdateCommentTextBlank() throws Exception {
+        updateCommentDto.setText(" ");
+        mockMvc.perform(patch("/users/1/commentaries/1")
+                        .content(mapper.writeValueAsString(updateCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Patch comment - text меньше 20")
+    void testUpdateCommentTextLessThan3() throws Exception {
+        updateCommentDto.setText("a".repeat(2));
+        mockMvc.perform(patch("/users/1/commentaries/1")
+                        .content(mapper.writeValueAsString(updateCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Patch comment - text больше 7000")
+    void testUpdateCommentTextMoreThan3() throws Exception {
+        updateCommentDto.setText("a".repeat(7001));
+        mockMvc.perform(patch("/users/1/commentaries/1")
+                        .content(mapper.writeValueAsString(updateCommentDto))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Delete comment по commentId и userId")
+    public void testDelete() throws Exception {
+        mockMvc.perform(delete("/users/1/commentaries/1"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("Get commentaries by userId - все хорошо")
+    void testFindAllCommentariesByUserIdAllOk() throws Exception {
+        listComments.add(commentShortDto);
+        when(commentService.findAllByUserId(1L)).thenReturn(listComments);
+        mockMvc.perform(get("/users/1/commentaries"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.[0].id", is(commentShortDto.getId()), Long.class))
+                .andExpect(jsonPath("$.[0].event", is(commentShortDto.getEvent()), Long.class))
+                .andExpect(jsonPath("$.[0].text", is(commentShortDto.getText()), String.class))
+                .andExpect(jsonPath("$.[0].dateCreation", is(commentShortDto.getDateCreation().format(dtf))));
     }
 }
