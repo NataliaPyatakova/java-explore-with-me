@@ -31,8 +31,14 @@ public class StatsServiceImpl implements StatsService {
     @Override
     public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         log.info("getStats start {} end {} uris {} unique {}", start, end, uris, unique);
+        if (start == null) {
+            throw new BadRequestException("Date start is null");
+        }
+        if (end == null) {
+            throw new BadRequestException("Date end is null");
+        }
         if (start.isAfter(end)) {
-            throw new BadRequestException("Дата начала позже даты конца");
+            throw new BadRequestException("Date start is after date end");
         }
         List<ViewStats> viewStatsList;
         if (uris != null && !uris.isEmpty()) {

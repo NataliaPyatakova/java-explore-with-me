@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +36,22 @@ public class ErrorHandler {
                 e.getMessage(),
                 "",
                 HttpStatus.INTERNAL_SERVER_ERROR.toString(),
+                LocalDateTime.now().format(dtf));
+    }
+
+    @ExceptionHandler({MissingServletRequestParameterException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST) //400
+    public ApiError handleMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
+        log.info("handleMissingServletRequestParameterException {}", e.getMessage());
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        String stackTrace = sw.toString();
+        return new ApiError(
+                new ArrayList<>(Collections.singleton(stackTrace)),
+                e.getMessage(),
+                "",
+                HttpStatus.BAD_REQUEST.toString(),
                 LocalDateTime.now().format(dtf));
     }
 
