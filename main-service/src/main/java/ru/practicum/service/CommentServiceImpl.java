@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.comment.*;
+import ru.practicum.enumeration.EventState;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.CommentMapper;
@@ -34,7 +35,8 @@ public class CommentServiceImpl implements CommentService {
     public CommentFullDto save(NewCommentDto newCommentDto, Long userId, Long eventId) {
         log.info("save userId {}, newCommentDto {}", userId, newCommentDto);
         User user = UserMapper.mapToUserFromUserDto(userService.findById(userId));
-        Event event = eventRepository.findById(eventId)
+        //событие должно быть опубликовано
+        Event event = eventRepository.findEventByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found",
                         "The required object was not found."));
         ParamCommentSave paramCommentSave = new ParamCommentSave(user, event);
@@ -72,6 +74,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
     public void deleteByUserIdAndCommentId(Long userId, Long commentId) {
         log.info("deleteByUserIdAndCommentId commentId {}", commentId);
         userService.findById(userId);
@@ -97,7 +100,8 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public List<CommentFullDto> findAllByEventId(Long eventId) {
         log.info("findAllByEventId eventId {}", eventId);
-        eventRepository.findById(eventId)
+        //событие должно быть опубликовано
+        eventRepository.findEventByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found",
                         "The required object was not found."));
         List<Comment> listComments = commentRepository.findAllByEventId(eventId);

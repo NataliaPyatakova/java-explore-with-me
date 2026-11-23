@@ -123,6 +123,26 @@ public class CommentServiceTest {
     }
 
     @Test
+    @DisplayName("Сохранение comment - событие не опубликовано")
+    public void testSaveNotPublishedEvent() {
+        em.persist(commentator);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        event.setState(EventState.PENDING);
+        em.persist(event);
+        try {
+            commentService.save(newCommentDto, commentator.getId(), event.getId());
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=" + event.getId() + " was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
+        }
+    }
+
+    @Test
     @DisplayName("Обновление comment - все хорошо")
     public void testUpdate() {
         em.persist(commentator);
@@ -455,6 +475,26 @@ public class CommentServiceTest {
             commentService.findAllByEventId(999L);
         } catch (NotFoundException e) {
             Assertions.assertEquals("Event with id=999 was not found", e.getMessage());
+            Assertions.assertEquals("The required object was not found.", e.getReason());
+        }
+    }
+
+    @Test
+    @DisplayName("Поиск comment по eventId - событие не опубликовано")
+    public void testFindAllByEventIdNotPublished() {
+        em.persist(commentator);
+        em.persist(initiator);
+        em.persist(category);
+        em.persist(location);
+        event.setInitiator(initiator);
+        event.setCategory(category);
+        event.setLocation(location);
+        event.setState(EventState.PENDING);
+        em.persist(event);
+        try {
+            commentService.findAllByEventId(event.getId());
+        } catch (NotFoundException e) {
+            Assertions.assertEquals("Event with id=" + event.getId() + " was not found", e.getMessage());
             Assertions.assertEquals("The required object was not found.", e.getReason());
         }
     }

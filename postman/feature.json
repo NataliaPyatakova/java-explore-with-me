@@ -283,7 +283,6 @@
 									"        event = await api.publishEvent(event.id);\r",
 									"        const submittedUser = await api.addUser(rnd.getUser());\r",
 									"        pm.collectionVariables.set('uid', submittedUser.id);\r",
-									"        pm.collectionVariables.set('eid', event.id);\r",
 									"        let commentBody = rnd.getComment();\r",
 									"        let comment = await api.addComment(submittedUser.id, event.id, commentBody);\r",
 									"        pm.collectionVariables.set('commentId', comment.id);\r",
@@ -329,9 +328,8 @@
 									"\r",
 									"let body\r",
 									"const req = {\r",
-									"                url: \"http://localhost:8080//users/\" + pm.collectionVariables.get('uid') + \"/commentaries\",\r",
+									"                url: \"http://localhost:8080/users/\" + pm.collectionVariables.get('uid') + \"/commentaries\",\r",
 									"                method: \"GET\",\r",
-									"                body: body == null ? \"\" : JSON.stringify(body),\r",
 									"                header: { \"Content-Type\": \"application/json\" },\r",
 									"            };\r",
 									"pm.sendRequest(req, (error, response) => {\r",
@@ -762,9 +760,8 @@
 									"\r",
 									"let body\r",
 									"const req = {\r",
-									"                url: \"http://localhost:8080//users/\" + pm.collectionVariables.get('uid') + \"/commentaries\",\r",
+									"                url: \"http://localhost:8080/users/\" + pm.collectionVariables.get('uid') + \"/commentaries\",\r",
 									"                method: \"GET\",\r",
-									"                body: body == null ? \"\" : JSON.stringify(body),\r",
 									"                header: { \"Content-Type\": \"application/json\" },\r",
 									"            };\r",
 									"pm.sendRequest(req, (error, response) => {\r",
@@ -1282,6 +1279,111 @@
 									"    pm.response.to.be.json;\r",
 									"});\r",
 									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"{{commentText}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/:userId/events/:eventId/comment",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								":userId",
+								"events",
+								":eventId",
+								"comment"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "{{uid}}",
+									"description": "(Required) id текущего пользователя"
+								},
+								{
+									"key": "eventId",
+									"value": "{{eid}}",
+									"description": "(Required) id события"
+								}
+							]
+						},
+						"description": "Добавление комментария к событию"
+					},
+					"response": []
+				},
+				{
+					"name": "Добавление нового комментария - событие не опубликовано",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const main = async () => {\r",
+									"    const api = new API(pm);\r",
+									"    const rnd = new RandomUtils();\r",
+									"\r",
+									"    try {\r",
+									"        const user = await api.addUser(rnd.getUser());\r",
+									"        const category = await api.addCategory(rnd.getCategory());\r",
+									"        let eventBody = rnd.getEvent(category.id);\r",
+									"        eventBody['requestModeration'] = true\r",
+									"        let event = await api.addEvent(user.id, eventBody);\r",
+									"        const submittedUser = await api.addUser(rnd.getUser());\r",
+									"        pm.collectionVariables.set('uid', 999);\r",
+									"        pm.collectionVariables.set('eid', event.id);\r",
+									"        pm.collectionVariables.set('commentText', \"тестовый длинный комментарий\");\r", 
+									"    } catch(err) {\r",
+									"        console.error(\"Ошибка при подготовке тестовых данных.\", err);\r",
+									"    }\r",
+									"};\r",
+									"\r",
+									"const interval = setInterval(() => {}, 1000);\r",
+									"\r",
+									"setTimeout(async () => \r",
+									"    {\r",
+									"        try {\r",
+									"            // выполняем наш скрипт\r",
+									"            await main();\r",
+									"        } catch (e) {\r",
+									"            console.error(e);\r",
+									"        } finally {\r",
+									"            clearInterval(interval);\r",
+									"        }\r",
+									"    },  \r",
+									"    100 \r",
+									");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Ответ должен содержать код статуса 404 и данные в формате json\", function () {\r",
+									"    pm.response.to.be.notFound;    \r",
+									"    pm.response.to.be.withBody;\r",
+									"    pm.response.to.be.json;\r",
+									"});\r",
+								    ""
 								],
 								"type": "text/javascript"
 							}
@@ -3213,7 +3315,7 @@
 					},
 					"response": []
 				},
-								{
+				{
 					"name": "Поиск списка комментариев по идентификатору события - несуществующее событие",
 					"event": [
 						{
@@ -3303,6 +3405,98 @@
 							]
 						},
 						"description": "Поиск списка комментариев по идентификатору события - несуществующее событие"
+					},
+					"response": []
+				},
+				{
+					"name": "Поиск списка комментариев по идентификатору события - неопубликованное событие",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const main = async () => {\r",
+									"    const api = new API(pm);\r",
+									"    const rnd = new RandomUtils();\r",
+									"\r",
+									"    try {\r",
+									"        const user = await api.addUser(rnd.getUser());\r",
+									"        const category = await api.addCategory(rnd.getCategory());\r",
+									"        let eventBody = rnd.getEvent(category.id);\r",
+									"        eventBody['requestModeration'] = true\r",
+									"        let event = await api.addEvent(user.id, eventBody);\r",
+									"        const submittedUser = await api.addUser(rnd.getUser());\r",
+									"        pm.collectionVariables.set('eid', event.id);\r",
+									"    } catch(err) {\r",
+									"        console.error(\"Ошибка при подготовке тестовых данных.\", err);\r",
+									"    }\r",
+									"};\r",
+									"\r",
+									"const interval = setInterval(() => {}, 1000);\r",
+									"\r",
+									"setTimeout(async () => \r",
+									"    {\r",
+									"        try {\r",
+									"            // выполняем наш скрипт\r",
+									"            await main();\r",
+									"        } catch (e) {\r",
+									"            console.error(e);\r",
+									"        } finally {\r",
+									"            clearInterval(interval);\r",
+									"        }\r",
+									"    },  \r",
+									"    100 \r",
+									");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+                                    "pm.test(\"Ответ должен содержать код статуса 404 и данные в формате json\", function () {\r",
+									"    pm.response.to.be.notFound;\r",
+									"    pm.response.to.be.withBody;\r",
+									"    pm.response.to.be.json;\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/events/:eventId/commentaries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"events",
+								":eventId",
+								"commentaries"
+							],
+							"variable": [
+								{
+									"key": "eventId",
+									"value": "{{eid}}",
+									"description": "(Required) id события"
+								}
+							]
+						},
+						"description": "Поиск списка комментариев по идентификатору события - неопубликованное событие"
 					},
 					"response": []
 				}
