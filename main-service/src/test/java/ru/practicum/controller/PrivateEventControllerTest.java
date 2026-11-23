@@ -642,7 +642,7 @@ public class PrivateEventControllerTest {
 
     @Test
     @DisplayName("Post comment - text меньше 20")
-    void testSSaveCommentTextLessThan3() throws Exception {
+    void testSaveCommentTextLessThan3() throws Exception {
         newCommentDto.setText("a".repeat(2));
         mockMvc.perform(post("/users/1/events/1/comment")
                         .content(mapper.writeValueAsString(newCommentDto))
@@ -733,5 +733,19 @@ public class PrivateEventControllerTest {
                 .andExpect(jsonPath("$.[0].event", is(commentShortDto.getEvent()), Long.class))
                 .andExpect(jsonPath("$.[0].text", is(commentShortDto.getText()), String.class))
                 .andExpect(jsonPath("$.[0].dateCreation", is(commentShortDto.getDateCreation().format(dtf))));
+    }
+
+    @Test
+    @DisplayName("Get comment by id - все хорошо")
+    void testFindCommentByIdOk() throws Exception {
+        when(commentService.findById(commentFullDto.getId())).thenReturn(commentFullDto);
+        mockMvc.perform(get("/users/1/commentaries/1")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
+                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
+                .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
+                .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
     }
 }

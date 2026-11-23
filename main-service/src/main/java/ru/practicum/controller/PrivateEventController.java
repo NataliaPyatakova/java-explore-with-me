@@ -92,6 +92,13 @@ public class PrivateEventController {
         return commentService.update(updateCommentDto, commentId, userId);
     }
 
+    @GetMapping("/commentaries/{commentId}")
+    public CommentFullDto findCommentById(@PathVariable Long userId,
+                                          @PathVariable Long commentId) {
+        log.info("PrivateEventController findCommentById userId {}, commentId {}", userId, commentId);
+        return commentService.findById(commentId);
+    }
+
     @DeleteMapping("/commentaries/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteComment(@PathVariable Long userId,
