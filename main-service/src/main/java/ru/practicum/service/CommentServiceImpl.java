@@ -39,6 +39,7 @@ public class CommentServiceImpl implements CommentService {
         Event event = eventRepository.findEventByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found",
                         "The required object was not found."));
+        //комментарий может оставить любой - участие в событии не проверяем
         ParamCommentSave paramCommentSave = new ParamCommentSave(user, event);
         Comment comment = commentRepository.save(CommentMapper.mapToCommentForCreate(newCommentDto, paramCommentSave));
         return CommentMapper.mapToCommentFullDto(comment);
