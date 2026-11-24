@@ -57,3 +57,6 @@ API основного сервиса имеют три части:
 
     1. спецификация основного сервиса: ewm-main-service-spec.json;
     2. спецификация сервиса статистики: ewm-stats-service.json.
+
+Ссылка на пул-реквест
+https://github.com/NataliaPyatakova/java-explore-with-me/pull/3
