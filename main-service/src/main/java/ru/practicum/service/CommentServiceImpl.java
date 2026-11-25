@@ -16,7 +16,6 @@ import ru.practicum.model.User;
 import ru.practicum.repository.CommentRepository;
 import ru.practicum.repository.EventRepository;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -91,10 +90,9 @@ public class CommentServiceImpl implements CommentService {
     public List<CommentShortDto> findAllByUserId(Long userId) {
         log.info("findAllByUserId userId {}", userId);
         userService.findById(userId);
-        List<Comment> listComments = commentRepository.findAllByAuthorId(userId);
+        List<Comment> listComments = commentRepository.findAllByAuthorIdOrderByDateCreationAsc(userId);
         return listComments.stream()
                 .map(CommentMapper::mapToCommentShortDto)
-                .sorted(Comparator.comparing(CommentShortDto::getDateCreation))
                 .toList();
     }
 
@@ -105,10 +103,9 @@ public class CommentServiceImpl implements CommentService {
         eventRepository.findEventByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found",
                         "The required object was not found."));
-        List<Comment> listComments = commentRepository.findAllByEventId(eventId);
+        List<Comment> listComments = commentRepository.findAllByEventIdOrderByDateCreationAsc(eventId);
         return listComments.stream()
                 .map(CommentMapper::mapToCommentFullDto)
-                .sorted(Comparator.comparing(CommentFullDto::getDateCreation))
                 .toList();
     }
 

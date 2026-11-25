@@ -518,10 +518,12 @@ public class CommentServiceTest {
         List<CommentFullDto> result = commentService.findAllByEventId(event.getId());
         Assertions.assertNotNull(result);
         Assertions.assertEquals(commentFullDto.getId(), result.getFirst().getId());
+        Assertions.assertEquals(commentFullDto.getAuthor(), result.getFirst().getAuthor());
         Assertions.assertEquals(commentFullDto.getEvent(), result.getFirst().getEvent());
         Assertions.assertEquals(commentFullDto.getText(), result.getFirst().getText());
         Assertions.assertEquals(commentFullDto.getDateCreation(), result.getFirst().getDateCreation());
         Assertions.assertEquals(commentFullDto2.getId(), result.getLast().getId());
+        Assertions.assertEquals(commentFullDto2.getAuthor(), result.getLast().getAuthor());
         Assertions.assertEquals(commentFullDto2.getEvent(), result.getLast().getEvent());
         Assertions.assertEquals(commentFullDto2.getText(), result.getLast().getText());
         Assertions.assertEquals(commentFullDto2.getDateCreation(), result.getLast().getDateCreation());
