@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import ru.practicum.dto.user.UserShortDto;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +16,7 @@ public class CommentFullDto {
     @NotNull
     private Long id;
     @NotNull
-    private Long author;
+    private UserShortDto author;
     @NotNull
     private Long event;
     @NotBlank

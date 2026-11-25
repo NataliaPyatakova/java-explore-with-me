@@ -85,7 +85,7 @@ public class CommentServiceTest {
         CommentFullDto result = commentService.save(newCommentDto, commentator.getId(), event.getId());
         Assertions.assertNotNull(result);
         Assertions.assertNotNull(result.getId());
-        Assertions.assertEquals(commentator.getId(), result.getAuthor());
+        Assertions.assertEquals(commentator.getId(), result.getAuthor().getId());
         Assertions.assertEquals(event.getId(), result.getEvent());
         Assertions.assertEquals(newCommentDto.getText(), result.getText());
         Assertions.assertNotNull(result.getDateCreation());

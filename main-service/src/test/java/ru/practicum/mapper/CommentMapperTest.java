@@ -76,7 +76,7 @@ public class CommentMapperTest {
         Assertions.assertNotNull(result);
         Assertions.assertEquals(foundedComment.getId(), result.getId());
         Assertions.assertEquals(foundedComment.getText(), result.getText());
-        Assertions.assertEquals(foundedComment.getAuthor().getId(), result.getAuthor());
+        Assertions.assertEquals(foundedComment.getAuthor().getId(), result.getAuthor().getId());
         Assertions.assertEquals(foundedComment.getEvent().getId(), result.getEvent());
         Assertions.assertEquals(foundedComment.getDateCreation(), result.getDateCreation());
     }

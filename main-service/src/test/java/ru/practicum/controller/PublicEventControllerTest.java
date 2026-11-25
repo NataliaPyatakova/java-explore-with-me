@@ -82,7 +82,7 @@ public class PublicEventControllerTest {
     private final CommentFullDto commentFullDto = new CommentFullDto()
             .setId(1L)
             .setEvent(1L)
-            .setAuthor(1L)
+            .setAuthor(initiatorShort)
             .setText("test_comment")
             .setDateCreation(date);
 
@@ -224,7 +224,8 @@ public class PublicEventControllerTest {
         mockMvc.perform(get("/events/" + eventFullDto.getId() + "/commentaries"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.[0].id", is(commentFullDto.getId()), Long.class))
-                .andExpect(jsonPath("$.[0].author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.[0].author.id", is(commentFullDto.getAuthor().getId()), Long.class))
+                .andExpect(jsonPath("$.[0].author.name", is(commentFullDto.getAuthor().getName()), String.class))
                 .andExpect(jsonPath("$.[0].event", is(commentFullDto.getEvent()), Long.class))
                 .andExpect(jsonPath("$.[0].text", is(commentFullDto.getText()), String.class))
                 .andExpect(jsonPath("$.[0].dateCreation", is(commentFullDto.getDateCreation().format(dtf))));

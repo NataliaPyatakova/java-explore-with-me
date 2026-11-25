@@ -118,7 +118,7 @@ public class PrivateEventControllerTest {
     private final CommentFullDto commentFullDto = new CommentFullDto()
             .setId(1L)
             .setEvent(1L)
-            .setAuthor(1L)
+            .setAuthor(initiatorShort)
             .setText("test_comment")
             .setDateCreation(date);
     private final UpdateCommentDto updateCommentDto = new UpdateCommentDto().setText("up_text_comments_very_long_and_More");
@@ -604,7 +604,8 @@ public class PrivateEventControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
-                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.author.id", is(commentFullDto.getAuthor().getId()), Long.class))
+                .andExpect(jsonPath("$.author.name", is(commentFullDto.getAuthor().getName()), String.class))
                 .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
                 .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
                 .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
@@ -669,7 +670,8 @@ public class PrivateEventControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
-                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.author.id", is(commentFullDto.getAuthor().getId()), Long.class))
+                .andExpect(jsonPath("$.author.name", is(commentFullDto.getAuthor().getName()), String.class))
                 .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
                 .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
                 .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
@@ -743,7 +745,8 @@ public class PrivateEventControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(commentFullDto.getId()), Long.class))
-                .andExpect(jsonPath("$.author", is(commentFullDto.getAuthor()), Long.class))
+                .andExpect(jsonPath("$.author.id", is(commentFullDto.getAuthor().getId()), Long.class))
+                .andExpect(jsonPath("$.author.name", is(commentFullDto.getAuthor().getName()), String.class))
                 .andExpect(jsonPath("$.event", is(commentFullDto.getEvent()), Long.class))
                 .andExpect(jsonPath("$.text", is(commentFullDto.getText()), String.class))
                 .andExpect(jsonPath("$.dateCreation", is(commentFullDto.getDateCreation().format(dtf))));
