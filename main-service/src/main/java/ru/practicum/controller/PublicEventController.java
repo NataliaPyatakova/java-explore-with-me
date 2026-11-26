@@ -8,11 +8,13 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.client.StatClient;
 import ru.practicum.dto.EndpointHit;
+import ru.practicum.dto.comment.CommentFullDto;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventShortDto;
 import ru.practicum.dto.event.ParamEventsFindByParam;
 import ru.practicum.enumeration.Sort;
 import ru.practicum.exception.BadRequestException;
+import ru.practicum.service.CommentService;
 import ru.practicum.service.EventService;
 
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class PublicEventController {
 
     private final EventService eventService;
     private final StatClient statClient;
+    private final CommentService commentService;
 
     @GetMapping
     public List<EventShortDto> findPublishedEventsByParam(@RequestParam(value = "text", required = false) String text,
@@ -86,5 +89,11 @@ public class PublicEventController {
                 .setTimestamp(LocalDateTime.now());
         statClient.hit(endpointHit);
         return result;
+    }
+
+    @GetMapping("/{id}/commentaries")
+    public List<CommentFullDto> findAllCommentariesByEventId(@PathVariable Long id) {
+        log.info("PublicEventController findAllByEventId id {}", id);
+        return commentService.findAllByEventId(id);
     }
 }

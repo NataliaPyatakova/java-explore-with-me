@@ -6,8 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.dto.comment.CommentFullDto;
+import ru.practicum.dto.comment.CommentShortDto;
+import ru.practicum.dto.comment.NewCommentDto;
+import ru.practicum.dto.comment.UpdateCommentDto;
 import ru.practicum.dto.event.*;
 import ru.practicum.dto.request.ParticipationRequestDto;
+import ru.practicum.service.CommentService;
 import ru.practicum.service.EventService;
 
 import java.util.List;
@@ -20,6 +25,7 @@ import java.util.List;
 public class PrivateEventController {
 
     private final EventService eventService;
+    private final CommentService commentService;
 
     @GetMapping("/events")
     public List<EventShortDto> findEventsByUserId(@PathVariable Long userId,
@@ -66,5 +72,44 @@ public class PrivateEventController {
                                                                @RequestBody @Valid EventRequestStatusUpdateRequest dto) {
         log.info("PrivateEventController updateRequestsStatus userId {} eventId {} dto {}", userId, eventId, dto);
         return eventService.updateRequestsStatus(dto, eventId, userId);
+    }
+
+    @PostMapping("/events/{eventId}/comment")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommentFullDto saveComment(@PathVariable Long userId,
+                                      @PathVariable Long eventId,
+                                      @RequestBody @Valid NewCommentDto newCommentDto) {
+        log.info("PrivateEventController saveComment newCommentDto {}, event {}, userId {}", newCommentDto, eventId, userId);
+        return commentService.save(newCommentDto, userId, eventId);
+    }
+
+    @PatchMapping("/commentaries/{commentId}")
+    public CommentFullDto updateComment(@PathVariable Long userId,
+                                        @PathVariable Long commentId,
+                                        @RequestBody @Valid UpdateCommentDto updateCommentDto) {
+        log.info("PrivateEventController updateComment updateCommentDto {}, commentId {}, userId {}",
+                updateCommentDto, commentId, userId);
+        return commentService.update(updateCommentDto, commentId, userId);
+    }
+
+    @GetMapping("/commentaries/{commentId}")
+    public CommentFullDto findCommentById(@PathVariable Long userId,
+                                          @PathVariable Long commentId) {
+        log.info("PrivateEventController findCommentById userId {}, commentId {}", userId, commentId);
+        return commentService.findById(commentId);
+    }
+
+    @DeleteMapping("/commentaries/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteComment(@PathVariable Long userId,
+                              @PathVariable Long commentId) {
+        log.info("PrivateEventController delete commentId {}, userId {}", commentId, userId);
+        commentService.deleteByUserIdAndCommentId(userId, commentId);
+    }
+
+    @GetMapping("/commentaries")
+    public List<CommentShortDto> findAllCommentariesByUserId(@PathVariable Long userId) {
+        log.info("PrivateEventController findAllCommentariesByUserId userId {}", userId);
+        return commentService.findAllByUserId(userId);
     }
 }
